@@ -2,21 +2,24 @@ name: 上游自动同步
 
 on:
   schedule:
-    - cron: '0 0 * * *' # 每天北京时间早上 8 点自动同步
-  workflow_dispatch: # 允许手动触发
+    - cron: '0 0 * * *' # 每天北京时间早上 8 点同步
+  workflow_dispatch: # 允许手动点按钮
 
 jobs:
   sync_latest_from_upstream:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout target repo
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Sync upstream
-        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.1
         with:
-          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
-          upstream_repository: 7Sageer/sublink-worker
-          upstream_branch: main
-          target_branch: main
-          test_mode: false}}
+          fetch-depth: 0
+
+      - name: Sync Upstream
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git remote add upstream https://github.com/7Sageer/sublink-worker.git
+          git fetch upstream
+          git checkout main
+          git merge upstream/main --allow-unrelated-histories || echo "没有冲突或已是最新"
+          git push origin main
