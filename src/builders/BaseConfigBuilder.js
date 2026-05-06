@@ -1,5 +1,5 @@
 import { ProxyParser } from '../parsers/index.js';
-import { deepCopy, tryDecodeSubscriptionLines, decodeBase64 } from '../utils.js';
+import { createStableProviderName, deepCopy, tryDecodeSubscriptionLines, decodeBase64 } from '../utils.js';
 import { createTranslator } from '../i18n/index.js';
 import { generateRules, getOutbounds, PREDEFINED_RULE_SETS } from '../config/index.js';
 
@@ -15,6 +15,8 @@ export class BaseConfigBuilder {
         this.groupByCountry = groupByCountry;
         this.includeAutoSelect = includeAutoSelect;
         this.providerUrls = [];  // URLs to use as providers (auto-sync)
+        this.autoProviderDescriptors = undefined;
+        this.subscriptionUserinfo = undefined;
     }
 
     async build() {
@@ -91,7 +93,11 @@ export class BaseConfigBuilder {
                     try {
                         const fetchResult = await fetchSubscriptionWithFormat(trimmedUrl, this.userAgent);
                         if (fetchResult) {
-                            const { content, format, url: originalUrl } = fetchResult;
+                            const { content, format, url: originalUrl, subscriptionUserinfo } = fetchResult;
+
+                            if (subscriptionUserinfo && !this.subscriptionUserinfo) {
+                                this.subscriptionUserinfo = subscriptionUserinfo;
+                            }
 
                             // If format is compatible with target client, use as provider
                             if (this.isCompatibleProviderFormat(format)) {
@@ -180,6 +186,43 @@ export class BaseConfigBuilder {
         return false;  // Default: no provider support
     }
 
+    getAutoProviderDescriptors(reservedNames = []) {
+        if (this.autoProviderDescriptors) {
+            return this.autoProviderDescriptors;
+        }
+
+        const usedNames = new Set(reservedNames);
+        const providerNamesByUrl = new Map();
+        const descriptors = [];
+
+        for (const url of this.providerUrls) {
+            if (typeof url !== 'string' || url.trim() === '') {
+                throw new Error('Provider URL must be a non-empty string');
+            }
+
+            const normalizedUrl = url.trim();
+            if (providerNamesByUrl.has(normalizedUrl)) {
+                continue;
+            }
+
+            const baseName = createStableProviderName(normalizedUrl);
+            let name = baseName;
+            let suffix = 2;
+
+            while (usedNames.has(name)) {
+                name = `${baseName}_${suffix}`;
+                suffix += 1;
+            }
+
+            usedNames.add(name);
+            providerNamesByUrl.set(normalizedUrl, name);
+            descriptors.push({ name, url: normalizedUrl });
+        }
+
+        this.autoProviderDescriptors = descriptors;
+        return descriptors;
+    }
+
     applyConfigOverrides(overrides) {
         if (!overrides || typeof overrides !== 'object') {
             return;
@@ -252,6 +295,10 @@ export class BaseConfigBuilder {
 
     hasConfigOverride(key) {
         return this.appliedOverrideKeys?.has(key);
+    }
+
+    getSubscriptionUserinfo() {
+        return this.subscriptionUserinfo;
     }
 
     getOutboundsList() {
