@@ -1,5 +1,5 @@
 // Application constants
-export const APP_NAME = 'Sublink Worker';
+export const APP_NAME = 'clash订阅转换';
 export const APP_VERSION = '2.4.2';
 export const GITHUB_REPO = 'https://github.com/xjxnx/sublink-worker';
 export const GITHUB_API_RELEASES = 'https://api.github.com/repos/xjxnx/sublink-worker/releases/latest';
