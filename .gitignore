@@ -194,3 +194,6 @@ public/styles.css
 
 # Skills CLI lockfile (local install state)
 skills-lock.json
+
+# Project uses pnpm only; ignore stray npm lockfile if anyone runs npm install
+package-lock.json
