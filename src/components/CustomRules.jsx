@@ -7,10 +7,12 @@ export const CustomRules = (props) => {
     const { t } = props;
 
     return (
-        <div x-data="customRulesData()" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                    <i class="fas fa-stream text-gray-400"></i>
+        <div x-data="customRulesData()" class="bento-card glass rounded-2xl p-5 sm:p-6">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2.5">
+                    <span class="w-9 h-9 rounded-xl flex items-center justify-center text-sm shadow-sm bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
+                        <i class="fas fa-stream"></i>
+                    </span>
                     {t('customRulesSection')}
                 </h3>
             </div>
