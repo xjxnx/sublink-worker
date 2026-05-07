@@ -11,7 +11,7 @@ import { ClashConfigBuilder } from '../builders/ClashConfigBuilder.js';
 import { SurgeConfigBuilder } from '../builders/SurgeConfigBuilder.js';
 import { createTranslator, resolveLanguage } from '../i18n/index.js';
 import { encodeBase64, tryDecodeSubscriptionLines } from '../utils.js';
-import { APP_NAME, APP_SUBTITLE } from '../constants.js';
+import { APP_NAME, APP_SUBTITLE, APP_VERSION, GITHUB_REPO } from '../constants.js';
 import { ShortLinkService } from '../services/shortLinkService.js';
 import { ConfigStorageService } from '../services/configStorageService.js';
 import { ServiceError, MissingDependencyError } from '../services/errors.js';
@@ -19,6 +19,81 @@ import { normalizeRuntime } from '../runtime/runtimeConfig.js';
 import { PREDEFINED_RULE_SETS, SING_BOX_CONFIG, SING_BOX_CONFIG_V1_11, generateSubconverterConfig } from '../config/index.js';
 
 const DEFAULT_USER_AGENT = 'curl/7.74.0';
+
+// Single source of truth for hreflang / og:locale / canonical query params.
+// Order matters: first entry is the default locale used when no ?lang= is supplied.
+const SUPPORTED_LANGS = [
+    { code: 'zh-CN', hreflang: 'zh-CN', ogLocale: 'zh_CN' },
+    { code: 'en-US', hreflang: 'en', ogLocale: 'en_US' },
+    { code: 'fa', hreflang: 'fa', ogLocale: 'fa_IR' },
+    { code: 'ru', hreflang: 'ru', ogLocale: 'ru_RU' }
+];
+const DEFAULT_LANG = SUPPORTED_LANGS[0].code;
+// English is the international fallback for unmatched locales (Google x-default convention).
+const X_DEFAULT_LANG = 'en-US';
+
+// Backend / API routes that must not be indexed. Keep in sync with robots.txt.
+const NON_INDEXABLE_PATHS = [
+    '/singbox',
+    '/clash',
+    '/xray',
+    '/surge',
+    '/subconverter',
+    '/shorten-v2',
+    '/resolve',
+    '/config',
+    '/s/',
+    '/b/',
+    '/c/',
+    '/x/'
+];
+
+function buildLangUrl(origin, langCode) {
+    return `${origin}/?lang=${langCode}`;
+}
+
+function buildAlternates(origin) {
+    const alternates = SUPPORTED_LANGS.map((entry) => ({
+        hreflang: entry.hreflang,
+        href: buildLangUrl(origin, entry.code),
+        ogLocale: entry.ogLocale
+    }));
+    alternates.push({
+        hreflang: 'x-default',
+        href: buildLangUrl(origin, X_DEFAULT_LANG)
+    });
+    return alternates;
+}
+
+function buildHomeSeo(c, lang, t) {
+    const origin = new URL(c.req.url).origin;
+    const canonicalUrl = buildLangUrl(origin, lang);
+    const alternates = buildAlternates(origin);
+    const langEntry = SUPPORTED_LANGS.find((entry) => entry.code === lang) || SUPPORTED_LANGS[0];
+    const jsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'WebApplication',
+        name: APP_NAME,
+        alternateName: 'Sublink Worker',
+        url: `${origin}/`,
+        description: t('pageDescription'),
+        applicationCategory: 'UtilityApplication',
+        operatingSystem: 'Any',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        inLanguage: SUPPORTED_LANGS.map((entry) => entry.hreflang),
+        softwareVersion: APP_VERSION,
+        license: 'https://opensource.org/licenses/MIT',
+        sameAs: [GITHUB_REPO]
+    };
+    return {
+        canonicalUrl,
+        alternates,
+        ogLocale: langEntry.ogLocale,
+        ogSiteName: APP_NAME,
+        jsonLd,
+        origin
+    };
+}
 
 export function createApp(bindings = {}) {
     const runtime = normalizeRuntime(bindings);
@@ -41,19 +116,39 @@ export function createApp(bindings = {}) {
         const t = c.get('t');
         const lang = resolveLanguage(c.get('lang'));
         const subtitle = APP_SUBTITLE[lang] || APP_SUBTITLE['zh-CN'];
+        const seo = buildHomeSeo(c, lang, t);
 
         return c.html(
-            <Layout title={t('pageTitle')} description={t('pageDescription')} keywords={t('pageKeywords')}>
+            <Layout
+                title={t('pageTitle')}
+                description={t('pageDescription')}
+                keywords={t('pageKeywords')}
+                lang={lang}
+                canonicalUrl={seo.canonicalUrl}
+                alternates={seo.alternates}
+                ogTitle={t('ogTitle')}
+                ogDescription={t('ogDescription')}
+                ogLocale={seo.ogLocale}
+                ogSiteName={seo.ogSiteName}
+                jsonLd={seo.jsonLd}
+            >
                 <div class="flex flex-col min-h-screen">
-                    <Navbar />
+                    <Navbar lang={lang} />
                     <main class="flex-1">
-                        <div class="container mx-auto px-4 py-8 pt-24">
-                            <div class="max-w-4xl mx-auto">
-                                <div class="text-center mb-12 pt-8">
-                                    <h1 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight">
-                                        {APP_NAME}
+                        <div class="container mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-8">
+                            <div class="max-w-5xl mx-auto">
+                                <div class="text-center mb-10 pt-4 animate-fade-in-up">
+                                    <div class="inline-flex items-center gap-2 px-3.5 py-1.5 mb-5 rounded-full glass text-xs font-medium text-primary-700 dark:text-primary-300">
+                                        <span class="relative flex h-2 w-2">
+                                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
+                                            <span class="relative inline-flex rounded-full h-2 w-2 bg-primary-500"></span>
+                                        </span>
+                                        SingBox · Clash · Xray · Surge
+                                    </div>
+                                    <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 tracking-tight">
+                                        <span class="text-gradient">{APP_NAME}</span>
                                     </h1>
-                                    <p class="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                                    <p class="text-base sm:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
                                         {subtitle}
                                     </p>
                                 </div>
@@ -66,6 +161,53 @@ export function createApp(bindings = {}) {
                 </div>
             </Layout>
         );
+    });
+
+    app.get('/robots.txt', (c) => {
+        const origin = new URL(c.req.url).origin;
+        const lines = [
+            'User-agent: *',
+            'Allow: /',
+            ...NON_INDEXABLE_PATHS.map((path) => `Disallow: ${path}`),
+            '',
+            `Sitemap: ${origin}/sitemap.xml`,
+            ''
+        ];
+        return c.text(lines.join('\n'), 200, {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'public, max-age=3600'
+        });
+    });
+
+    app.get('/sitemap.xml', (c) => {
+        const origin = new URL(c.req.url).origin;
+        const alternates = buildAlternates(origin);
+        const alternateLinks = alternates
+            .map((alt) => `    <xhtml:link rel="alternate" hreflang="${alt.hreflang}" href="${alt.href}" />`)
+            .join('\n');
+        const urlEntries = SUPPORTED_LANGS.map((entry) => {
+            const loc = buildLangUrl(origin, entry.code);
+            return [
+                '  <url>',
+                `    <loc>${loc}</loc>`,
+                alternateLinks,
+                '    <changefreq>weekly</changefreq>',
+                '    <priority>1.0</priority>',
+                '  </url>'
+            ].join('\n');
+        }).join('\n');
+        const xml = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"',
+            '        xmlns:xhtml="http://www.w3.org/1999/xhtml">',
+            urlEntries,
+            '</urlset>',
+            ''
+        ].join('\n');
+        return c.text(xml, 200, {
+            'Content-Type': 'application/xml; charset=utf-8',
+            'Cache-Control': 'public, max-age=3600'
+        });
     });
 
     app.get('/singbox', async (c) => {

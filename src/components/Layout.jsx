@@ -1,24 +1,85 @@
-import { html } from 'hono/html'
-import { APP_KEYWORDS } from '../constants.js';
+import { html, raw } from 'hono/html'
+
+const RTL_LANGS = new Set(['fa', 'ar', 'he', 'ur'])
+
+// Embed JSON inside <script> safely against premature termination and parser quirks
+const escapeJsonForScript = (value) => JSON.stringify(value)
+  .replace(/</g, '\\u003c')
+  .replace(/>/g, '\\u003e')
+  .replace(/&/g, '\\u0026')
+  .replace(/\u2028/g, '\\u2028')
+  .replace(/\u2029/g, '\\u2029')
 
 export const Layout = (props) => {
-  const { title, children } = props
+  const {
+    title,
+    description = '',
+    keywords = '',
+    lang = 'en',
+    canonicalUrl,
+    alternates = [],
+    ogTitle,
+    ogDescription,
+    ogLocale,
+    ogImage,
+    ogSiteName,
+    twitterSite,
+    jsonLd,
+    children
+  } = props
+
+  const dir = RTL_LANGS.has(lang) ? 'rtl' : 'ltr'
+  const resolvedOgTitle = ogTitle || title
+  const resolvedOgDescription = ogDescription || description
+  const ogImageUrl = ogImage || ''
+
   return html`
     <!DOCTYPE html>
-    <html lang="en" x-data="appData()">
+    <html lang="${lang}" dir="${dir}" x-data="appData()">
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>${title}</title>
-        <meta name="description" content="Convert and optimize your subscription links easily" />
-        <meta name="keywords" content="${APP_KEYWORDS}" />
+        <meta name="description" content="${description}" />
+        ${keywords ? html`<meta name="keywords" content="${keywords}" />` : ''}
+
+        ${canonicalUrl ? html`<link rel="canonical" href="${canonicalUrl}" />` : ''}
+        ${alternates.map((alt) => html`<link rel="alternate" hreflang="${alt.hreflang}" href="${alt.href}" />`)}
+
+        <meta property="og:type" content="website" />
+        ${ogSiteName ? html`<meta property="og:site_name" content="${ogSiteName}" />` : ''}
+        <meta property="og:title" content="${resolvedOgTitle}" />
+        <meta property="og:description" content="${resolvedOgDescription}" />
+        ${canonicalUrl ? html`<meta property="og:url" content="${canonicalUrl}" />` : ''}
+        ${ogLocale ? html`<meta property="og:locale" content="${ogLocale}" />` : ''}
+        ${alternates
+          .filter((alt) => alt.ogLocale && alt.ogLocale !== ogLocale)
+          .map((alt) => html`<meta property="og:locale:alternate" content="${alt.ogLocale}" />`)}
+        ${ogImageUrl ? html`<meta property="og:image" content="${ogImageUrl}" />` : ''}
+
+        <meta name="twitter:card" content="${ogImageUrl ? 'summary_large_image' : 'summary'}" />
+        ${twitterSite ? html`<meta name="twitter:site" content="${twitterSite}" />` : ''}
+        <meta name="twitter:title" content="${resolvedOgTitle}" />
+        <meta name="twitter:description" content="${resolvedOgDescription}" />
+        ${ogImageUrl ? html`<meta name="twitter:image" content="${ogImageUrl}" />` : ''}
+
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-        <script src="https://cdn.tailwindcss.com"></script>
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+        <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+        <link rel="stylesheet" href="/styles.css" />
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
-        <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
         <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.10/dist/cdn.min.js" onerror="window.__alpineFailed=true"></script>
+
+        ${jsonLd
+          ? html`<script type="application/ld+json">${raw(escapeJsonForScript(jsonLd))}</script>`
+          : ''}
+
         <script>
           window.__alpineLoaded = false;
           document.addEventListener('alpine:init', () => { window.__alpineLoaded = true; });
@@ -32,86 +93,6 @@ export const Layout = (props) => {
             }
           });
         </script>
-        <script>
-          tailwind.config = {
-            darkMode: 'class',
-            theme: {
-              extend: {
-                colors: {
-                  primary: {
-                    50: '#eef9ff',
-                    100: '#dcf2ff',
-                    200: '#b2e6ff',
-                    300: '#6ed4ff',
-                    400: '#33c5ff', // Spaceship Blue
-                    500: '#0aa3eb',
-                    600: '#0082ca',
-                    700: '#0068a3',
-                    800: '#005887',
-                    900: '#06496f',
-                    950: '#042f4a',
-                  },
-                  gray: {
-                    850: '#1f2937',
-                    900: '#111827',
-                    950: '#0b0f19', // Deep dark for background
-                  }
-                },
-                fontFamily: {
-                  sans: ['Inter', 'sans-serif'],
-                }
-              }
-            }
-          }
-        </script>
-        <style>
-          body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            position: relative;
-            min-height: 100vh;
-          }
-
-          /* Subtle radial gradient background */
-          body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            z-index: -2;
-            background:
-              radial-gradient(ellipse 80% 50% at 50% -20%, rgba(10, 163, 235, 0.08) 0%, transparent 60%),
-              radial-gradient(ellipse 60% 40% at 90% 80%, rgba(51, 197, 255, 0.05) 0%, transparent 50%),
-              radial-gradient(ellipse 50% 30% at 10% 90%, rgba(0, 130, 202, 0.04) 0%, transparent 50%);
-            pointer-events: none;
-          }
-
-          .dark body::before,
-          html.dark body::before {
-            background:
-              radial-gradient(ellipse 80% 50% at 50% -20%, rgba(10, 163, 235, 0.12) 0%, transparent 60%),
-              radial-gradient(ellipse 60% 40% at 90% 80%, rgba(51, 197, 255, 0.06) 0%, transparent 50%),
-              radial-gradient(ellipse 50% 30% at 10% 90%, rgba(0, 130, 202, 0.05) 0%, transparent 50%);
-          }
-
-          /* Subtle noise texture overlay */
-          body::after {
-            content: '';
-            position: fixed;
-            inset: 0;
-            z-index: -1;
-            opacity: 0.3;
-            pointer-events: none;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-            background-repeat: repeat;
-            background-size: 128px 128px;
-          }
-
-          .dark body::after,
-          html.dark body::after {
-            opacity: 0.15;
-          }
-
-          [x-cloak] { display: none !important; }
-        </style>
         <script>
           function appData() {
             return {
@@ -147,17 +128,14 @@ export const Layout = (props) => {
                 later: getUpdateI18n('later')
               },
               init() {
-                // Check for updates after a short delay to not block initial render
                 setTimeout(() => this.checkForUpdates(), 3000);
               },
               async checkForUpdates() {
                 try {
-                  // Check if user dismissed this version before
                   const dismissedVersion = localStorage.getItem('sublink_dismissed_version');
                   const lastCheck = localStorage.getItem('sublink_last_version_check');
                   const now = Date.now();
-                  
-                  // Only check once per hour to avoid rate limiting
+
                   if (lastCheck && (now - parseInt(lastCheck)) < 3600000) {
                     const cachedVersion = localStorage.getItem('sublink_latest_version');
                     if (cachedVersion && cachedVersion !== dismissedVersion && this.compareVersions(cachedVersion, this.currentVersion) > 0) {
@@ -170,17 +148,15 @@ export const Layout = (props) => {
                   const response = await fetch(apiUrl, {
                     headers: { 'Accept': 'application/vnd.github.v3+json' }
                   });
-                  
+
                   if (!response.ok) return;
-                  
+
                   const data = await response.json();
                   const latestVersion = (data.tag_name || '').replace(/^v/, '');
-                  
-                  // Cache the result
+
                   localStorage.setItem('sublink_latest_version', latestVersion);
                   localStorage.setItem('sublink_last_version_check', now.toString());
-                  
-                  // Compare versions
+
                   if (latestVersion && latestVersion !== dismissedVersion && this.compareVersions(latestVersion, this.currentVersion) > 0) {
                     this.latestVersion = latestVersion;
                     this.showUpdateToast = true;
@@ -207,7 +183,6 @@ export const Layout = (props) => {
             }
           }
 
-          // i18n helper for update checker
           function getUpdateI18n(key) {
             const lang = navigator.language || 'en-US';
             const translations = {
@@ -252,7 +227,7 @@ export const Layout = (props) => {
           }
         </script>
       </head>
-      <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+      <body class="bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-300 selection:bg-primary-200/40">
         ${children}
       </body>
     </html>
