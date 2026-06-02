@@ -11,7 +11,9 @@ export function createVercelRuntime(env = process.env) {
         logger: console,
         config: {
             configTtlSeconds: undefined,
-            shortLinkTtlSeconds: null
+            shortLinkTtlSeconds: null,
+            inputLogTtlSeconds: parseNumber(env.INPUT_LOG_TTL_SECONDS) || null,
+            adminToken: env.ADMIN_TOKEN || null
         }
     };
 }
@@ -80,4 +82,10 @@ function buildCommonRedisOptions(env) {
         options.tls = {};
     }
     return options;
+}
+
+function parseNumber(value) {
+    if (!value) return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
 }

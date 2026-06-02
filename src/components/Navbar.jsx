@@ -1,6 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource hono/jsx */
-import { APP_NAME, GITHUB_REPO } from '../constants.js';
+import { APP_NAME } from '../constants.js';
 
 const LANGUAGES = [
     { code: 'zh-CN', label: '简体中文', short: '中' },
@@ -79,25 +79,19 @@ export const Navbar = (props) => {
                             </div>
                         </div>
 
-                        <a
-                            href={GITHUB_REPO}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="hidden sm:flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100/80 dark:hover:bg-gray-800/60 transition-colors"
+                        <span
+                            class="hidden sm:flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl text-gray-700 dark:text-gray-300"
                             aria-label="GitHub"
                         >
                             <i class="fab fa-github text-base"></i>
                             <span>GitHub</span>
-                        </a>
-                        <a
-                            href={GITHUB_REPO}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="sm:hidden p-2.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100/80 dark:hover:bg-gray-800/60 transition-colors"
+                        </span>
+                        <span
+                            class="sm:hidden p-2.5 rounded-xl text-gray-600 dark:text-gray-300"
                             aria-label="GitHub"
                         >
                             <i class="fab fa-github"></i>
-                        </a>
+                        </span>
                         <button
                             class="relative p-2.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100/80 dark:hover:bg-gray-800/60 transition-all duration-300 cursor-pointer"
                             x-on:click="toggleDarkMode()"

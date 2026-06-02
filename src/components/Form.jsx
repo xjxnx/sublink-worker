@@ -103,11 +103,12 @@ export const Form = (props) => {
         <div class="flex flex-col sm:flex-row gap-3">
           <button
             type="submit"
-            class="btn-primary flex-1 py-3.5 px-6 text-white rounded-2xl font-semibold flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            class="flex-1 py-3.5 px-6 text-white rounded-2xl font-semibold flex items-center justify-center gap-2.5 cursor-pointer transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
             x-bind:disabled="loading"
+            x-bind:class="justConverted ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/30 scale-[1.02]' : 'btn-primary'"
           >
-            <i class="fas" x-bind:class="loading ? 'fa-spinner fa-spin' : 'fa-bolt'"></i>
-            <span x-text="loading ? processingText : convertText">{t('convert')}</span>
+            <i class="fas" x-bind:class="loading ? 'fa-spinner fa-spin' : (justConverted ? 'fa-check' : 'fa-bolt')"></i>
+            <span x-text="loading ? processingText : (justConverted ? convertedText : convertText)">{t('convert')}</span>
           </button>
 
           <button

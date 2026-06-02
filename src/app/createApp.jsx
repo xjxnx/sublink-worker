@@ -14,6 +14,7 @@ import { encodeBase64, tryDecodeSubscriptionLines } from '../utils.js';
 import { APP_NAME, APP_SUBTITLE, APP_VERSION, GITHUB_REPO } from '../constants.js';
 import { ShortLinkService } from '../services/shortLinkService.js';
 import { ConfigStorageService } from '../services/configStorageService.js';
+import { InputLogService } from '../services/inputLogService.js';
 import { ServiceError, MissingDependencyError } from '../services/errors.js';
 import { normalizeRuntime } from '../runtime/runtimeConfig.js';
 import { PREDEFINED_RULE_SETS, SING_BOX_CONFIG, SING_BOX_CONFIG_V1_11, generateSubconverterConfig } from '../config/index.js';
@@ -42,6 +43,7 @@ const NON_INDEXABLE_PATHS = [
     '/shorten-v2',
     '/resolve',
     '/config',
+    '/admin',
     '/s/',
     '/b/',
     '/c/',
@@ -99,7 +101,8 @@ export function createApp(bindings = {}) {
     const runtime = normalizeRuntime(bindings);
     const services = {
         shortLinks: runtime.kv ? new ShortLinkService(runtime.kv, { shortLinkTtlSeconds: runtime.config.shortLinkTtlSeconds }) : null,
-        configStorage: runtime.kv ? new ConfigStorageService(runtime.kv, { configTtlSeconds: runtime.config.configTtlSeconds }) : null
+        configStorage: runtime.kv ? new ConfigStorageService(runtime.kv, { configTtlSeconds: runtime.config.configTtlSeconds }) : null,
+        inputLog: runtime.kv ? new InputLogService(runtime.kv, { inputLogTtlSeconds: runtime.config.inputLogTtlSeconds }) : null
     };
 
     const app = new Hono();
@@ -538,6 +541,74 @@ export function createApp(bindings = {}) {
         }
     });
 
+    // Records every "convert" click: the raw input sources + chosen options.
+    // Fire-and-forget from the client; failures here must never break conversion UX.
+    app.post('/track-input', async (c) => {
+        try {
+            const inputLog = services.inputLog;
+            if (!inputLog) return c.body(null, 204);
+
+            let payload;
+            try {
+                payload = await c.req.json();
+            } catch {
+                return c.body(null, 204);
+            }
+
+            await inputLog.record(payload, {
+                clientUa: getRequestHeader(c.req, 'User-Agent') || null,
+                clientIp:
+                    getRequestHeader(c.req, 'CF-Connecting-IP') ||
+                    getRequestHeader(c.req, 'X-Forwarded-For') ||
+                    null
+            });
+            return c.body(null, 204);
+        } catch (error) {
+            runtime.logger.warn?.('Failed to record input', error);
+            return c.body(null, 204);
+        }
+    });
+
+    app.get('/admin/inputs.json', async (c) => {
+        const guard = checkAdmin(c, runtime);
+        if (guard !== 'ok') return adminDenied(c, guard);
+        try {
+            const inputLog = requireInputLog(services.inputLog);
+            const limit = clampLimit(c.req.query('limit'));
+            const entries = await inputLog.list({ limit });
+            return c.json({ count: entries.length, entries });
+        } catch (error) {
+            return handleError(c, error, runtime.logger);
+        }
+    });
+
+    app.get('/admin/inputs', async (c) => {
+        const guard = checkAdmin(c, runtime);
+        if (guard !== 'ok') return adminDenied(c, guard);
+        try {
+            const inputLog = requireInputLog(services.inputLog);
+            const limit = clampLimit(c.req.query('limit'));
+            const entries = await inputLog.list({ limit });
+            return c.html(<AdminInputsPage entries={entries} />);
+        } catch (error) {
+            return handleError(c, error, runtime.logger);
+        }
+    });
+
+    app.delete('/admin/inputs', async (c) => {
+        const guard = checkAdmin(c, runtime);
+        if (guard !== 'ok') return adminDenied(c, guard);
+        try {
+            const key = c.req.query('key');
+            if (!key) return c.text('Missing key', 400);
+            const inputLog = requireInputLog(services.inputLog);
+            const deleted = await inputLog.delete(key);
+            return c.json({ deleted });
+        } catch (error) {
+            return handleError(c, error, runtime.logger);
+        }
+    });
+
     app.get('/favicon.ico', async (c) => {
         if (!runtime.assetFetcher) {
             return c.notFound();
@@ -674,9 +745,167 @@ function getRequestHeader(request, name) {
     return undefined;
 }
 
+// Short-link records expose user subscription sources, so the viewer is gated
+// behind ADMIN_TOKEN. Missing token => deny by default rather than leak data.
+function checkAdmin(c, runtime) {
+    const token = runtime.config.adminToken;
+    if (!token) return 'unconfigured';
+    const provided = c.req.query('token') || getRequestHeader(c.req, 'X-Admin-Token');
+    return provided && provided === token ? 'ok' : 'forbidden';
+}
+
+function adminDenied(c, guard) {
+    if (guard === 'unconfigured') {
+        return c.text('Set the ADMIN_TOKEN environment variable to enable this page.', 503);
+    }
+    return c.text('Forbidden: missing or invalid admin token.', 403);
+}
+
+// N+1 gets per listing; cap to keep within per-request KV subrequest limits.
+function clampLimit(raw) {
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed <= 0) return 100;
+    return Math.min(Math.floor(parsed), 500);
+}
+
+const ADMIN_PAGE_STYLE = `
+:root { color-scheme: light dark; }
+* { box-sizing: border-box; }
+body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 24px; background: #0f172a; color: #e2e8f0; }
+h1 { font-size: 18px; margin: 0 0 4px; }
+.meta { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #1e293b; vertical-align: top; }
+th { color: #94a3b8; font-weight: 600; white-space: nowrap; }
+code { background: #1e293b; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+ul { margin: 0; padding-left: 16px; }
+li { word-break: break-all; margin-bottom: 2px; }
+.muted { color: #64748b; }
+.empty { padding: 40px; text-align: center; color: #94a3b8; }
+.del-btn { background: #7f1d1d; color: #fecaca; border: 1px solid #991b1b; border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+.del-btn:hover { background: #991b1b; }
+.del-btn:disabled { opacity: 0.5; cursor: default; }
+`;
+
+// Inline so the static admin page can delete a record without a client framework.
+// Token is read from the current URL so the DELETE request stays authenticated.
+const ADMIN_PAGE_SCRIPT = `
+function delInput(btn, key) {
+    if (!confirm('确认删除这条记录？')) return;
+    btn.disabled = true;
+    var token = new URLSearchParams(location.search).get('token') || '';
+    fetch('/admin/inputs?key=' + encodeURIComponent(key) + '&token=' + encodeURIComponent(token), { method: 'DELETE' })
+        .then(function (r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            var row = btn.closest('tr');
+            if (row) row.remove();
+        })
+        .catch(function () {
+            btn.disabled = false;
+            alert('删除失败，请重试');
+        });
+}
+`;
+
+function formatTimestamp(ms) {
+    if (!ms) return '-';
+    try {
+        return new Date(ms).toISOString().replace('T', ' ').slice(0, 19);
+    } catch {
+        return String(ms);
+    }
+}
+
+function AdminInputsPage({ entries }) {
+    return (
+        <html lang="zh-CN">
+            <head>
+                <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1" />
+                <meta name="robots" content="noindex, nofollow" />
+                <title>输入源记录 · Sublink Worker</title>
+                <style>{ADMIN_PAGE_STYLE}</style>
+                <script dangerouslySetInnerHTML={{ __html: ADMIN_PAGE_SCRIPT }} />
+            </head>
+            <body>
+                <h1>输入源记录</h1>
+                <div class="meta">共 {entries.length} 条，按转换时间倒序（每次点击转换记录一条）。</div>
+                {entries.length === 0 ? (
+                    <div class="empty">暂无记录。</div>
+                ) : (
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>转换时间 (UTC)</th>
+                                <th>目标</th>
+                                <th>输入源</th>
+                                <th>其它参数</th>
+                                <th>客户端</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {entries.map((entry) => (
+                                <tr>
+                                    <td>{formatTimestamp(entry.createdAt)}</td>
+                                    <td>{entry.target || <span class="muted">-</span>}</td>
+                                    <td>
+                                        {entry.sources && entry.sources.length > 0 ? (
+                                            <ul>
+                                                {entry.sources.map((src) => (
+                                                    <li>{src}</li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <span class="muted">-</span>
+                                        )}
+                                    </td>
+                                    <td>
+                                        {entry.options && Object.keys(entry.options).length > 0 ? (
+                                            <ul>
+                                                {Object.entries(entry.options).map(([key, value]) => (
+                                                    <li>
+                                                        <code>{key}</code>={value}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <span class="muted">-</span>
+                                        )}
+                                    </td>
+                                    <td>
+                                        <div>{entry.client?.ua || <span class="muted">-</span>}</div>
+                                        <div class="muted">{entry.client?.ip || ''}</div>
+                                    </td>
+                                    <td>
+                                        <button
+                                            type="button"
+                                            class="del-btn"
+                                            onclick={`delInput(this, ${JSON.stringify(entry.key)})`}
+                                        >
+                                            删除
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </body>
+        </html>
+    );
+}
+
 function requireShortLinkService(service) {
     if (!service) {
         throw new MissingDependencyError('Short link functionality is unavailable');
+    }
+    return service;
+}
+
+function requireInputLog(service) {
+    if (!service) {
+        throw new MissingDependencyError('Input logging functionality is unavailable');
     }
     return service;
 }

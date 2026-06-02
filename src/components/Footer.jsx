@@ -1,6 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource hono/jsx */
-import { APP_NAME, GITHUB_REPO, APP_VERSION } from '../constants.js';
+import { APP_NAME, APP_VERSION } from '../constants.js';
 
 export const Footer = () => {
     const currentYear = new Date().getFullYear();
@@ -12,27 +12,20 @@ export const Footer = () => {
                     <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
                         <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
                             <span>© {currentYear} {APP_NAME}</span>
-                            <a
-                                href={`${GITHUB_REPO}/releases/tag/v${APP_VERSION}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="text-xs px-2.5 py-0.5 rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 border border-primary-200/60 dark:border-primary-800/40 hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors font-mono cursor-pointer"
-                                title={`View release notes for v${APP_VERSION}`}
+                            <span
+                                class="text-xs px-2.5 py-0.5 rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 border border-primary-200/60 dark:border-primary-800/40 font-mono"
                             >
                                 v{APP_VERSION}
-                            </a>
+                            </span>
                         </div>
 
                         <div class="flex items-center gap-1">
-                            <a
-                                href={GITHUB_REPO}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="p-2 rounded-lg text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 hover:bg-primary-50/60 dark:hover:bg-primary-900/20 transition-colors cursor-pointer"
+                            <span
+                                class="p-2 rounded-lg text-gray-500 dark:text-gray-400"
                                 aria-label="GitHub"
                             >
                                 <i class="fab fa-github text-base"></i>
-                            </a>
+                            </span>
                         </div>
                     </div>
                 </div>

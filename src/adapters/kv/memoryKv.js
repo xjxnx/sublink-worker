@@ -23,6 +23,19 @@ export class MemoryKVAdapter {
         this.clearExpiration(key);
     }
 
+    async list(options = {}) {
+        const { prefix = '', limit } = options;
+        let names = [...this.store.keys()].filter((name) => name.startsWith(prefix));
+        if (typeof limit === 'number' && limit >= 0) {
+            names = names.slice(0, limit);
+        }
+        return {
+            keys: names.map((name) => ({ name })),
+            list_complete: true,
+            cursor: undefined
+        };
+    }
+
     scheduleExpiration(key, ttlSeconds) {
         this.clearExpiration(key);
         const timeoutId = setTimeout(() => {

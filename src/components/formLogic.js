@@ -100,6 +100,8 @@ export const formLogicFn = (t) => {
             configValidationMessage: '',
             customUA: '',
             loading: false,
+            justConverted: false,
+            justConvertedTimer: null,
             generatedLinks: null,
             shortenedLinks: null,
             shortening: false,
@@ -109,6 +111,7 @@ export const formLogicFn = (t) => {
             // These will be populated from window.APP_TRANSLATIONS
             processingText: '',
             convertText: '',
+            convertedText: '',
             shortenLinksText: '',
             shorteningText: '',
             showFullLinksText: '',
@@ -118,6 +121,7 @@ export const formLogicFn = (t) => {
                 if (window.APP_TRANSLATIONS) {
                     this.processingText = window.APP_TRANSLATIONS.processing;
                     this.convertText = window.APP_TRANSLATIONS.convert;
+                    this.convertedText = window.APP_TRANSLATIONS.converted;
                     this.shortenLinksText = window.APP_TRANSLATIONS.shortenLinks;
                     this.shorteningText = window.APP_TRANSLATIONS.shortening;
                     this.showFullLinksText = window.APP_TRANSLATIONS.showFullLinks;
@@ -400,6 +404,15 @@ export const formLogicFn = (t) => {
                         surge: origin + '/surge?' + queryString
                     };
 
+                    // Link generation is synchronous, so the loading spinner never paints.
+                    // Flash a short success state on the button so the click is clearly acknowledged.
+                    if (this.justConvertedTimer) clearTimeout(this.justConvertedTimer);
+                    this.justConverted = true;
+                    this.justConvertedTimer = setTimeout(() => { this.justConverted = false; }, 2000);
+
+                    // Record the raw input sources on every convert click (fire-and-forget).
+                    this.trackInput(customRules);
+
                     // Scroll to results
                     setTimeout(() => {
                         const resultsDiv = document.querySelector('.mt-12');
@@ -414,6 +427,33 @@ export const formLogicFn = (t) => {
                 } finally {
                     this.loading = false;
                 }
+            },
+
+            trackInput(customRules) {
+                if (!this.input || !this.input.trim()) return;
+
+                const options = {
+                    selectedRules:
+                        this.selectedPredefinedRule && this.selectedPredefinedRule !== 'custom'
+                            ? this.selectedPredefinedRule
+                            : JSON.stringify(this.selectedRules),
+                    customRules: Array.isArray(customRules) && customRules.length > 0 ? JSON.stringify(customRules) : '',
+                    ua: this.customUA || '',
+                    group_by_country: this.groupByCountry ? 'true' : '',
+                    include_auto_select: this.includeAutoSelect ? '' : 'false',
+                    enable_clash_ui: this.enableClashUI ? 'true' : '',
+                    external_controller: this.externalController || '',
+                    configId: this.currentConfigId || ''
+                };
+
+                // Fire-and-forget: tracking must never block or break conversion.
+                try {
+                    fetch('/track-input', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ input: this.input, configType: this.configType, options })
+                    }).catch(() => {});
+                } catch {}
             },
 
             async shortenLinks() {
