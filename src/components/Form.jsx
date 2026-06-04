@@ -238,6 +238,36 @@ export const Form = (props) => {
                   <input type="text" x-model="externalUiDownloadUrl" class="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-200/70 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors" placeholder={t('externalUiDownloadUrlPlaceholder')} />
                 </div>
               </div>
+
+              <label class="flex items-center justify-between p-2.5 rounded-xl bg-gray-50/60 dark:bg-gray-800/40 hover:bg-gray-100/80 dark:hover:bg-gray-700/40 transition-colors cursor-pointer gap-3">
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{t('enableMultiPort')}</span>
+                <div class="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input type="checkbox" x-model="multiPort" class="sr-only peer" />
+                  <div class="bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300/50 dark:peer-focus:ring-primary-800/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-primary-500 peer-checked:to-primary-600" style="width:2.5rem;height:1.375rem"></div>
+                </div>
+              </label>
+
+              <div
+                x-show="multiPort"
+                {...{
+                  'x-transition:enter': 'transition ease-out duration-200',
+                  'x-transition:enter-start': 'opacity-0 transform -translate-y-2',
+                  'x-transition:enter-end': 'opacity-100 transform translate-y-0',
+                  'x-transition:leave': 'transition ease-in duration-150',
+                  'x-transition:leave-start': 'opacity-100 transform translate-y-0',
+                  'x-transition:leave-end': 'opacity-0 transform -translate-y-2'
+                }}
+                class="space-y-2 pt-2"
+              >
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{t('multiPortBasePort')}</label>
+                  <input type="number" min="1024" max="65500" {...{ 'x-model.number': 'multiPortBasePort' }} class="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-200/70 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors" placeholder="20000" />
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{t('multiPortCount')}</label>
+                  <input type="number" min="1" max="50" {...{ 'x-model.number': 'multiPortCount' }} class="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-200/70 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors" placeholder="3" />
+                </div>
+              </div>
             </div>
           </div>
 

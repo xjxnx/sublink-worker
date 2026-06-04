@@ -47,8 +47,67 @@ function getClashUdpValue(proxy, defaultEnabled = true) {
     return defaultEnabled;
 }
 
+const MULTI_PORT_GLOBAL_GROUP = '全部节点';
+
+// Returns sanitized {basePort, count} or null when input is invalid; invalid input is ignored, not an error.
+function normalizeMultiPortOptions(options) {
+    if (!options || options.enabled !== true) return null;
+    const basePort = Number(options.basePort);
+    const count = Number(options.count);
+    if (!Number.isInteger(basePort) || basePort < 1024 || basePort > 65500) return null;
+    if (!Number.isInteger(count) || count < 1 || count > 50) return null;
+    if (basePort + count - 1 > 65535) return null;
+    return { basePort, count };
+}
+
+// Append Clash Meta listeners + per-port select groups so each port maps to its own outbound group.
+function appendMultiPortListeners(config, options) {
+    const normalized = normalizeMultiPortOptions(options);
+    if (!normalized) return;
+    const { basePort, count } = normalized;
+
+    const listeners = [];
+    const portGroups = [];
+    for (let i = 0; i < count; i++) {
+        const port = basePort + i;
+        const groupName = `${port}组`;
+        listeners.push({
+            name: `port${port}`,
+            type: 'mixed',
+            port,
+            listen: '0.0.0.0',
+            proxy: groupName
+        });
+        portGroups.push({
+            name: groupName,
+            type: 'select',
+            proxies: [MULTI_PORT_GLOBAL_GROUP]
+        });
+    }
+    const globalGroup = {
+        name: MULTI_PORT_GLOBAL_GROUP,
+        type: 'select',
+        'include-all': true,
+        filter: '^(?!直连).*'
+    };
+
+    // formatConfig() can run more than once per request, so strip our prior output before re-adding to stay idempotent.
+    const listenerNames = new Set(listeners.map(l => l.name));
+    const groupNames = new Set([...portGroups.map(g => g.name), MULTI_PORT_GLOBAL_GROUP]);
+    const existingListeners = Array.isArray(config.listeners)
+        ? config.listeners.filter(l => !listenerNames.has(l?.name))
+        : [];
+    const existingGroups = Array.isArray(config['proxy-groups'])
+        ? config['proxy-groups'].filter(g => !groupNames.has(g?.name))
+        : [];
+
+    config['proxy-groups'] = [...existingGroups, ...portGroups, globalGroup];
+    // Newly added key dumps last, keeping listeners at the YAML document tail.
+    config.listeners = [...existingListeners, ...listeners];
+}
+
 export class ClashConfigBuilder extends BaseConfigBuilder {
-    constructor(inputString, selectedRules, customRules, baseConfig, lang, userAgent, groupByCountry = false, enableClashUI = false, externalController, externalUiDownloadUrl, includeAutoSelect = true) {
+    constructor(inputString, selectedRules, customRules, baseConfig, lang, userAgent, groupByCountry = false, enableClashUI = false, externalController, externalUiDownloadUrl, includeAutoSelect = true, multiPortOptions = null) {
         if (!baseConfig) {
             baseConfig = CLASH_CONFIG;
         }
@@ -60,6 +119,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
         this.enableClashUI = enableClashUI;
         this.externalController = externalController;
         this.externalUiDownloadUrl = externalUiDownloadUrl;
+        this.multiPortOptions = multiPortOptions;
     }
 
     /**
@@ -688,6 +748,8 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
             this.config['external-ui-url'] = uiUrl;
             this.config['secret'] = secret;
         }
+
+        appendMultiPortListeners(this.config, this.multiPortOptions);
 
         return yaml.dump(this.config);
     }

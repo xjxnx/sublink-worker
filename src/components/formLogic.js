@@ -88,6 +88,9 @@ export const formLogicFn = (t) => {
             enableClashUI: false,
             externalController: '',
             externalUiDownloadUrl: '',
+            multiPort: false,
+            multiPortBasePort: 20000,
+            multiPortCount: 3,
             configType: 'singbox',
             configEditor: '',
             savingConfig: false,
@@ -139,6 +142,9 @@ export const formLogicFn = (t) => {
                 this.enableClashUI = localStorage.getItem('enableClashUI') === 'true';
                 this.externalController = localStorage.getItem('externalController') || '';
                 this.externalUiDownloadUrl = localStorage.getItem('externalUiDownloadUrl') || '';
+                this.multiPort = localStorage.getItem('multiPort') === 'true';
+                this.multiPortBasePort = Number(localStorage.getItem('multiPortBasePort')) || 20000;
+                this.multiPortCount = Number(localStorage.getItem('multiPortCount')) || 3;
                 this.customUA = localStorage.getItem('userAgent') || '';
                 this.configEditor = localStorage.getItem('configEditor') || '';
                 this.configType = localStorage.getItem('configType') || 'singbox';
@@ -170,6 +176,9 @@ export const formLogicFn = (t) => {
                 this.$watch('enableClashUI', val => localStorage.setItem('enableClashUI', val));
                 this.$watch('externalController', val => localStorage.setItem('externalController', val));
                 this.$watch('externalUiDownloadUrl', val => localStorage.setItem('externalUiDownloadUrl', val));
+                this.$watch('multiPort', val => localStorage.setItem('multiPort', val));
+                this.$watch('multiPortBasePort', val => localStorage.setItem('multiPortBasePort', val));
+                this.$watch('multiPortCount', val => localStorage.setItem('multiPortCount', val));
                 this.$watch('customUA', val => localStorage.setItem('userAgent', val));
                 this.$watch('configEditor', val => {
                     localStorage.setItem('configEditor', val);
@@ -387,6 +396,11 @@ export const formLogicFn = (t) => {
                     if (this.enableClashUI) params.append('enable_clash_ui', 'true');
                     if (this.externalController) params.append('external_controller', this.externalController);
                     if (this.externalUiDownloadUrl) params.append('external_ui_download_url', this.externalUiDownloadUrl);
+                    if (this.multiPort) {
+                        params.append('multiPort', 'true');
+                        params.append('basePort', String(this.multiPortBasePort));
+                        params.append('count', String(this.multiPortCount));
+                    }
 
                     // Add configId if present in URL
                     const urlParams = new URLSearchParams(window.location.search);
@@ -674,6 +688,12 @@ export const formLogicFn = (t) => {
                     this.externalUiDownloadUrl = externalUiDownloadUrl;
                 }
 
+                this.multiPort = params.get('multiPort') === 'true';
+                const basePort = params.get('basePort');
+                if (basePort) this.multiPortBasePort = Number(basePort) || 20000;
+                const portCount = params.get('count');
+                if (portCount) this.multiPortCount = Number(portCount) || 3;
+
                 const ua = params.get('ua');
                 if (ua) {
                     this.customUA = ua;
@@ -687,7 +707,7 @@ export const formLogicFn = (t) => {
 
                 // Expand advanced options if any advanced settings are present
                 if (selectedRules || customRules || this.groupByCountry || this.enableClashUI ||
-                    externalController || externalUiDownloadUrl || ua || configId) {
+                    externalController || externalUiDownloadUrl || ua || configId || this.multiPort) {
                     this.showAdvanced = true;
                 }
             }
