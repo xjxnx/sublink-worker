@@ -103,6 +103,16 @@ export class SingboxConfigBuilder extends BaseConfigBuilder {
         // The 'udp: true/false' field is a Clash/Clash Meta specific setting
         delete sanitized.udp;
 
+        // Clash uses network=ws|grpc for transport; sing-box only allows tcp|udp here
+        if (
+            sanitized.transport &&
+            sanitized.network &&
+            sanitized.network !== 'tcp' &&
+            sanitized.network !== 'udp'
+        ) {
+            delete sanitized.network;
+        }
+
         // Remove 'alpn' from root level - it should only exist inside 'tls' object for sing-box
         // For protocols like vless/vmess, alpn belongs inside the tls configuration
         if (sanitized.alpn && sanitized.tls) {

@@ -615,7 +615,9 @@ export function createApp(bindings = {}) {
         }
     });
 
-    app.get('/favicon.ico', async (c) => {
+    // Static asset fallback (styles.css, favicon, images, etc.) served from public/.
+    // Registered last so it only handles paths no explicit route matched.
+    app.get('*', async (c) => {
         if (!runtime.assetFetcher) {
             return c.notFound();
         }
