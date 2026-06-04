@@ -124,7 +124,8 @@ export function convertYamlProxyToObject(p) {
             };
         }
         case 'trojan': {
-            const tlsEnabled = !!p.tls;
+            // Trojan mandates TLS; Clash subs usually omit the `tls` field, so default to enabled unless explicitly disabled.
+            const tlsEnabled = p.tls !== undefined ? !!p.tls : true;
             const reality = p['reality-opts'];
             const tls = tlsEnabled
                 ? {

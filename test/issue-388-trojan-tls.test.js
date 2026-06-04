@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseTrojan } from '../src/parsers/protocols/trojanParser.js';
+import { convertYamlProxyToObject } from '../src/parsers/convertYamlProxyToObject.js';
 
 // Trojan-over-TLS is required by protocol design. When the URL omits the
 // `security` param, sing-box would receive `tls.enabled = false` and fail to
@@ -26,6 +27,56 @@ describe('Issue #388 - trojan defaults to TLS when security param omitted', () =
     it('respects security=none when explicitly set', () => {
         const url = 'trojan://pass@example.com:443?security=none#no-tls';
         const result = parseTrojan(url);
+
+        expect(result.tls.enabled).toBe(false);
+    });
+});
+
+// Clash YAML proxies usually omit `tls` for trojan since the protocol implies it.
+// convertYamlProxyToObject must default trojan to TLS so sni/skip-cert-verify survive.
+describe('Issue #388 - YAML trojan defaults to TLS when tls field omitted', () => {
+    it('enables TLS and keeps sni/skip-cert-verify when tls is absent', () => {
+        const result = convertYamlProxyToObject({
+            name: '🇭🇰 HK',
+            server: 'hk-1.example.com',
+            port: 20101,
+            type: 'trojan',
+            password: 'secret',
+            sni: 's0.awsstatic.com',
+            'skip-cert-verify': true,
+            udp: true,
+            network: 'ws',
+            'ws-opts': { path: '/movie', headers: { Host: 's0.awsstatic.com' } }
+        });
+
+        expect(result.type).toBe('trojan');
+        expect(result.tls.enabled).toBe(true);
+        expect(result.tls.server_name).toBe('s0.awsstatic.com');
+        expect(result.tls.insecure).toBe(true);
+        expect(result.transport).toEqual({ type: 'ws', path: '/movie', headers: { Host: 's0.awsstatic.com' } });
+    });
+
+    it('respects explicit tls: false', () => {
+        const result = convertYamlProxyToObject({
+            name: 'no-tls',
+            server: 'example.com',
+            port: 443,
+            type: 'trojan',
+            password: 'secret',
+            tls: false
+        });
+
+        expect(result.tls.enabled).toBe(false);
+    });
+
+    it('does not change vmess default (still requires explicit tls)', () => {
+        const result = convertYamlProxyToObject({
+            name: 'vmess-node',
+            server: 'example.com',
+            port: 443,
+            type: 'vmess',
+            uuid: '6dffb7f9-c201-3777-af46-c934c49c1034'
+        });
 
         expect(result.tls.enabled).toBe(false);
     });
