@@ -9,6 +9,8 @@ import { UpdateChecker } from '../components/UpdateChecker.jsx';
 import { SingboxConfigBuilder } from '../builders/SingboxConfigBuilder.js';
 import { ClashConfigBuilder } from '../builders/ClashConfigBuilder.js';
 import { SurgeConfigBuilder } from '../builders/SurgeConfigBuilder.js';
+import { BaseConfigBuilder } from '../builders/BaseConfigBuilder.js';
+import { proxyToShareLink } from '../parsers/proxyToShareLink.js';
 import { createTranslator, resolveLanguage } from '../i18n/index.js';
 import { encodeBase64, tryDecodeSubscriptionLines } from '../utils.js';
 import { APP_NAME, APP_SUBTITLE, APP_VERSION, GITHUB_REPO } from '../constants.js';
@@ -417,43 +419,31 @@ export function createApp(bindings = {}) {
             return c.text('Missing config parameter', 400);
         }
 
-        const proxylist = inputString.split('\n');
-        const finalProxyList = [];
-        let subscriptionUserinfo;
         const userAgent = c.req.query('ua') || getRequestHeader(c.req, 'User-Agent') || DEFAULT_USER_AGENT;
-        const headers = { 'User-Agent': userAgent };
+        const lang = c.get('lang');
 
-        for (const proxy of proxylist) {
-            const trimmedProxy = proxy.trim();
-            if (!trimmedProxy) continue;
-
-            if (trimmedProxy.startsWith('http://') || trimmedProxy.startsWith('https://')) {
-                try {
-                    const response = await fetch(trimmedProxy, { method: 'GET', headers });
-                    const fetchedUserinfo = response.headers.get('subscription-userinfo');
-                    if (fetchedUserinfo && subscriptionUserinfo === undefined) {
-                        subscriptionUserinfo = fetchedUserinfo;
-                    }
-                    const text = await response.text();
-                    let processed = tryDecodeSubscriptionLines(text, { decodeUriComponent: true });
-                    if (!Array.isArray(processed)) processed = [processed];
-                    finalProxyList.push(...processed.filter(item => typeof item === 'string' && item.trim() !== ''));
-                } catch (e) {
-                    runtime.logger.warn('Failed to fetch the proxy', e);
-                }
-            } else {
-                let processed = tryDecodeSubscriptionLines(trimmedProxy);
-                if (!Array.isArray(processed)) processed = [processed];
-                finalProxyList.push(...processed.filter(item => typeof item === 'string' && item.trim() !== ''));
-            }
+        // Parse any input (share links, Clash YAML, sing-box JSON, http subscriptions,
+        // base64 lists) into unified proxy objects, then serialize each back to a share
+        // link so clients like v2rayN can split the subscription into individual nodes.
+        const builder = new BaseConfigBuilder(inputString, {}, lang, userAgent);
+        let proxies = [];
+        try {
+            proxies = await builder.parseCustomItems();
+        } catch (e) {
+            runtime.logger.warn('Failed to parse xray input', e);
         }
 
-        const finalString = finalProxyList.join('\n');
+        const shareLinks = proxies
+            .map(proxyToShareLink)
+            .filter(link => typeof link === 'string' && link !== '');
+
+        const finalString = shareLinks.join('\n');
         if (!finalString) {
             return c.text('Missing config parameter', 400);
         }
 
         const responseHeaders = {};
+        const subscriptionUserinfo = builder.getSubscriptionUserinfo?.();
         if (subscriptionUserinfo) {
             responseHeaders['subscription-userinfo'] = subscriptionUserinfo;
         }
