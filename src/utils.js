@@ -411,3 +411,13 @@ export function parseCountryFromNodeName(nodeName) {
 
 	return null;
 }
+
+// Airport subscriptions often inject pseudo-nodes that carry account info instead of
+// real proxies (official site, expiry date, remaining traffic, plan tier, channels...).
+// These keywords flag such entries so callers can opt out of converting them.
+const INVALID_NODE_NAME_PATTERN = /官网|官方|网址|网站|发布页|订阅|续费|续期|充值|购买|到期|过期|有效期|剩余|流量|套餐|重置|距离下次|节点异常|失联|客服|教程|工单|售后|返利|邀请|公告|通知|群组|频道|http|t\.me|telegram|expire|traffic|payment/i;
+
+export function isInvalidNodeName(name) {
+	if (typeof name !== 'string' || name.trim() === '') return false;
+	return INVALID_NODE_NAME_PATTERN.test(name);
+}

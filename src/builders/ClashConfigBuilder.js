@@ -47,6 +47,67 @@ function getClashUdpValue(proxy, defaultEnabled = true) {
     return defaultEnabled;
 }
 
+// Desired top-level key order for the emitted Clash YAML. Keys not listed here are
+// appended afterwards in their existing insertion order.
+const CLASH_KEY_ORDER = [
+    'port',
+    'socks-port',
+    'redir-port',
+    'tproxy-port',
+    'mixed-port',
+    'allow-lan',
+    'bind-address',
+    'mode',
+    'log-level',
+    'ipv6',
+    'geodata-mode',
+    'geo-auto-update',
+    'geodata-loader',
+    'geo-update-interval',
+    'geox-url',
+    'external-controller',
+    'external-ui',
+    'external-ui-name',
+    'external-ui-url',
+    'secret',
+    'sniffer',
+    'dns',
+    'listeners',
+    'proxy-providers',
+    'proxies',
+    'proxy-groups',
+    'rules',
+    'rule-providers'
+];
+
+// flowLevel:0 collapses each proxy (including nested maps like reality-opts) onto a
+// single line; lineWidth:-1 prevents js-yaml from wrapping long values.
+function dumpProxyEntry(proxy) {
+    return yaml.dump(proxy, { flowLevel: 0, lineWidth: -1 }).trim();
+}
+
+// Serialize config with explicit key ordering and one-line flow-style proxies.
+function dumpClashConfig(config) {
+    const orderedKeys = [
+        ...CLASH_KEY_ORDER.filter(key => key in config),
+        ...Object.keys(config).filter(key => !CLASH_KEY_ORDER.includes(key))
+    ];
+    let out = '';
+    for (const key of orderedKeys) {
+        const value = config[key];
+        if (key === 'proxies') {
+            if (!Array.isArray(value) || value.length === 0) {
+                out += 'proxies: []\n';
+            } else {
+                out += 'proxies:\n' + value.map(p => `  - ${dumpProxyEntry(p)}`).join('\n') + '\n';
+            }
+        } else {
+            out += yaml.dump({ [key]: value });
+        }
+    }
+    return out;
+}
+
 const MULTI_PORT_GLOBAL_GROUP = '全部节点';
 
 // Returns sanitized {basePort, count} or null when input is invalid; invalid input is ignored, not an error.
@@ -751,6 +812,6 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
 
         appendMultiPortListeners(this.config, this.multiPortOptions);
 
-        return yaml.dump(this.config);
+        return dumpClashConfig(this.config);
     }
 }

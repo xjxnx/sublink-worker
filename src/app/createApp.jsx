@@ -12,7 +12,7 @@ import { SurgeConfigBuilder } from '../builders/SurgeConfigBuilder.js';
 import { BaseConfigBuilder } from '../builders/BaseConfigBuilder.js';
 import { proxyToShareLink } from '../parsers/proxyToShareLink.js';
 import { createTranslator, resolveLanguage } from '../i18n/index.js';
-import { encodeBase64, tryDecodeSubscriptionLines } from '../utils.js';
+import { encodeBase64, tryDecodeSubscriptionLines, isInvalidNodeName } from '../utils.js';
 import { APP_NAME, APP_SUBTITLE, APP_VERSION, GITHUB_REPO } from '../constants.js';
 import { ShortLinkService } from '../services/shortLinkService.js';
 import { ConfigStorageService } from '../services/configStorageService.js';
@@ -260,6 +260,7 @@ export function createApp(bindings = {}) {
                 singboxConfigVersion,
                 includeAutoSelect
             );
+            builder.excludeInvalidNodes = parseBooleanFlag(c.req.query('exclude_invalid_nodes'));
             await builder.build();
             const userinfo = builder.getSubscriptionUserinfo();
             if (userinfo) {
@@ -314,6 +315,7 @@ export function createApp(bindings = {}) {
                 includeAutoSelect,
                 multiPortOptions
             );
+            builder.excludeInvalidNodes = parseBooleanFlag(c.req.query('exclude_invalid_nodes'));
             await builder.build();
             const userinfo = builder.getSubscriptionUserinfo();
             const headers = { 'Content-Type': 'text/yaml; charset=utf-8' };
@@ -357,6 +359,7 @@ export function createApp(bindings = {}) {
                 groupByCountry,
                 includeAutoSelect
             );
+            builder.excludeInvalidNodes = parseBooleanFlag(c.req.query('exclude_invalid_nodes'));
             builder.setSubscriptionUrl(c.req.url);
             await builder.build();
 
@@ -431,6 +434,10 @@ export function createApp(bindings = {}) {
             proxies = await builder.parseCustomItems();
         } catch (e) {
             runtime.logger.warn('Failed to parse xray input', e);
+        }
+
+        if (parseBooleanFlag(c.req.query('exclude_invalid_nodes'))) {
+            proxies = proxies.filter(p => !(p?.tag && isInvalidNodeName(p.tag)));
         }
 
         const shareLinks = proxies

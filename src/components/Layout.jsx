@@ -63,7 +63,8 @@ export const Layout = (props) => {
         <meta name="twitter:description" content="${resolvedOgDescription}" />
         ${ogImageUrl ? html`<meta name="twitter:image" content="${ogImageUrl}" />` : ''}
 
-        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="alternate icon" type="image/x-icon" href="/favicon.ico" />
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

@@ -1,5 +1,5 @@
 import { ProxyParser } from '../parsers/index.js';
-import { createStableProviderName, deepCopy, tryDecodeSubscriptionLines, decodeBase64 } from '../utils.js';
+import { createStableProviderName, deepCopy, tryDecodeSubscriptionLines, decodeBase64, isInvalidNodeName } from '../utils.js';
 import { createTranslator } from '../i18n/index.js';
 import { generateRules, getOutbounds, PREDEFINED_RULE_SETS } from '../config/index.js';
 
@@ -14,6 +14,7 @@ export class BaseConfigBuilder {
         this.appliedOverrideKeys = new Set();
         this.groupByCountry = groupByCountry;
         this.includeAutoSelect = includeAutoSelect;
+        this.excludeInvalidNodes = false;  // Set via route before build() to drop airport info pseudo-nodes
         this.providerUrls = [];  // URLs to use as providers (auto-sync)
         this.autoProviderDescriptors = undefined;
         this.subscriptionUserinfo = undefined;
@@ -361,6 +362,9 @@ export class BaseConfigBuilder {
         const validItems = customItems.filter(item => item != null);
         validItems.forEach(item => {
             if (item?.tag) {
+                if (this.excludeInvalidNodes && isInvalidNodeName(item.tag)) {
+                    return;
+                }
                 const convertedProxy = this.convertProxy(item);
                 if (convertedProxy) {
                     this.addProxyToConfig(convertedProxy);

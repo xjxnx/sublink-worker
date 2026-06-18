@@ -210,6 +210,17 @@ export const Form = (props) => {
               </label>
 
               <label class="flex items-center justify-between p-2.5 rounded-xl bg-gray-50/60 dark:bg-gray-800/40 hover:bg-gray-100/80 dark:hover:bg-gray-700/40 transition-colors cursor-pointer gap-3">
+                <span class="flex flex-col">
+                  <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{t('excludeInvalidNodes')}</span>
+                  <span class="text-xs text-gray-400 dark:text-gray-500">{t('excludeInvalidNodesTip')}</span>
+                </span>
+                <div class="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input type="checkbox" x-model="excludeInvalidNodes" class="sr-only peer" />
+                  <div class="bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300/50 dark:peer-focus:ring-primary-800/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-primary-500 peer-checked:to-primary-600" style="width:2.5rem;height:1.375rem"></div>
+                </div>
+              </label>
+
+              <label class="flex items-center justify-between p-2.5 rounded-xl bg-gray-50/60 dark:bg-gray-800/40 hover:bg-gray-100/80 dark:hover:bg-gray-700/40 transition-colors cursor-pointer gap-3">
                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{t('enableClashUI')}</span>
                 <div class="relative inline-flex items-center cursor-pointer shrink-0">
                   <input type="checkbox" x-model="enableClashUI" class="sr-only peer" />
