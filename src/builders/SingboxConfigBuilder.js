@@ -6,6 +6,12 @@ import { addProxyWithDedup } from './helpers/proxyHelpers.js';
 import { buildSelectorMembers as buildSelectorMemberList, buildNodeSelectMembers, buildCustomRuleMembers, uniqueNames } from './helpers/groupBuilder.js';
 import { normalizeGroupName } from './helpers/groupNameUtils.js';
 
+const ANYTLS_OPTION_KEYS = {
+    'idle-session-check-interval': 'idle_session_check_interval',
+    'idle-session-timeout': 'idle_session_timeout',
+    'min-idle-session': 'min_idle_session'
+};
+
 export class SingboxConfigBuilder extends BaseConfigBuilder {
     constructor(inputString, selectedRules, customRules, baseConfig, lang, userAgent, groupByCountry = false, enableClashUI = false, externalController, externalUiDownloadUrl, singboxVersion = '1.12', includeAutoSelect = true) {
         const resolvedBaseConfig = baseConfig ?? SING_BOX_CONFIG;
@@ -97,6 +103,24 @@ export class SingboxConfigBuilder extends BaseConfigBuilder {
     convertProxy(proxy) {
         // Create a shallow copy to avoid mutating the original
         const sanitized = { ...proxy };
+
+        if (sanitized.type === 'anytls') {
+            // Normalize URI/YAML kebab-case fields to sing-box snake_case fields.
+            Object.entries(ANYTLS_OPTION_KEYS).forEach(([sourceKey, targetKey]) => {
+                if (sanitized[sourceKey] !== undefined && sanitized[targetKey] === undefined) {
+                    sanitized[targetKey] = sanitized[sourceKey];
+                }
+                delete sanitized[sourceKey];
+            });
+
+            // sing-box expects duration values as strings, while URI/YAML inputs
+            // commonly provide idle intervals as seconds.
+            ['idle_session_check_interval', 'idle_session_timeout'].forEach((key) => {
+                if (typeof sanitized[key] === 'number') {
+                    sanitized[key] = `${sanitized[key]}s`;
+                }
+            });
+        }
 
         // Strip Clash-only / mis-typed fields that conflict with sing-box semantics.
         // `udp` is Clash-only. Top-level `network` in sing-box is a TCP/UDP allowlist

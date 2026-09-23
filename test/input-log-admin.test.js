@@ -34,6 +34,11 @@ describe('Input source tracking + admin viewer', () => {
         await track(app, {
             input: 'vmess://a\ntrojan://b\nhttps://sub.example.com/list',
             configType: 'singbox',
+            outputSources: {
+                xray: 'https://example.com/xray?configId=abc',
+                singbox: 'https://example.com/singbox?configId=abc',
+                blocked: 'javascript:alert(1)'
+            },
             options: { selectedRules: 'balanced', ua: 'clash' }
         });
 
@@ -45,6 +50,10 @@ describe('Input source tracking + admin viewer', () => {
         const entry = body.entries[0];
         expect(entry.target).toBe('singbox');
         expect(entry.sources).toEqual(['vmess://a', 'trojan://b', 'https://sub.example.com/list']);
+        expect(entry.outputSources).toEqual([
+            { type: 'xray', url: 'https://example.com/xray?configId=abc' },
+            { type: 'singbox', url: 'https://example.com/singbox?configId=abc' }
+        ]);
         expect(entry.options.selectedRules).toBe('balanced');
         expect(entry.options.ua).toBe('clash');
         expect(typeof entry.createdAt).toBe('number');
@@ -59,6 +68,57 @@ describe('Input source tracking + admin viewer', () => {
         const res = await app.request(`http://localhost/admin/inputs.json?token=${ADMIN_TOKEN}`);
         const body = await res.json();
         expect(body.count).toBe(0);
+    });
+
+    it('skips oversized and unsafe output URLs without storing truncated links', async () => {
+        const kv = new MemoryKVAdapter();
+        const app = createTestApp(kv);
+        const validUrl = 'https://example.com/clash?config=complete';
+        await track(app, {
+            input: 'vless://node',
+            outputSources: [
+                null,
+                { type: 'clash', url: ` ${validUrl} ` },
+                { type: 'oversized', url: `https://example.com/?config=${'a'.repeat(8192)}` },
+                { type: 'unsafe', url: 'java\nscript:alert(1)' },
+                { type: 'data', url: 'data:text/html,<script>alert(1)</script>' }
+            ]
+        });
+
+        const res = await app.request(`http://localhost/admin/inputs.json?token=${ADMIN_TOKEN}`);
+        const body = await res.json();
+        expect(body.entries[0].outputSources).toEqual([{ type: 'clash', url: validUrl }]);
+    });
+
+    it('renders old records without output sources', async () => {
+        const kv = new MemoryKVAdapter();
+        const app = createTestApp(kv);
+        await kv.put('inlog:legacy', JSON.stringify({ createdAt: 1, sources: ['vless://legacy'] }));
+
+        const res = await app.request(`http://localhost/admin/inputs?token=${ADMIN_TOKEN}`);
+        expect(res.status).toBe(200);
+        expect(await res.text()).toContain('vless://legacy');
+    });
+
+    it('escapes output labels and URLs in the admin HTML', async () => {
+        const kv = new MemoryKVAdapter();
+        const app = createTestApp(kv);
+        await track(app, {
+            input: 'vless://node',
+            outputSources: [
+                { type: '<img src=x onerror=alert(1)>', url: 'https://example.com/?q="<script>alert(1)</script>' },
+                { type: 'unsafe', url: 'javascript:alert(1)' }
+            ]
+        });
+
+        const res = await app.request(`http://localhost/admin/inputs?token=${ADMIN_TOKEN}`);
+        const html = await res.text();
+        expect(res.status).toBe(200);
+        expect(html).not.toContain('<img src=x');
+        expect(html).not.toContain('<script>alert(1)</script>');
+        expect(html).not.toContain('href="javascript:');
+        expect(html).toContain('&lt;img');
+        expect(html).toContain('rel="noopener noreferrer"');
     });
 
     it('orders entries by time (newest first)', async () => {
@@ -151,12 +211,18 @@ describe('Input source tracking + admin viewer', () => {
     it('serves the HTML viewer page with recorded sources', async () => {
         const kv = new MemoryKVAdapter();
         const app = createTestApp(kv);
-        await track(app, { input: 'vless://node-xyz', configType: 'surge' });
+        await track(app, {
+            input: 'vless://node-xyz',
+            configType: 'surge',
+            outputSources: { surge: 'https://localhost/surge?configId=xyz' }
+        });
 
         const res = await app.request(`http://localhost/admin/inputs?token=${ADMIN_TOKEN}`);
         expect(res.status).toBe(200);
         const html = await res.text();
         expect(html).toContain('vless://node-xyz');
+        expect(html).toContain('输出源');
+        expect(html).toContain('https://localhost/surge?configId=xyz');
         expect(html).toContain('输入源记录');
     });
 });

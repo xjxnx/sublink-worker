@@ -6,3 +6,9 @@ dist
 .gitignore
 Dockerfile
 vercel.json
+.dev.vars
+.env
+.env.*
+sub_raw.txt
+.claude
+.agents

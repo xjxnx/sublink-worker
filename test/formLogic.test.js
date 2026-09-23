@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { formLogicFn } from '../src/components/formLogic.js';
 
 describe('formLogic toString fix', () => {
@@ -31,5 +31,35 @@ describe('formLogic toString fix', () => {
     expect(typeof data.submitForm).toBe('function');
     expect(typeof data.toggleAccordion).toBe('function');
     expect(data.showAdvanced).toBe(false);
+  });
+
+  it.each([false, true])('tracks the current generated URLs without blocking conversion (tracking failure: %s)', async (failTracking) => {
+    const fakeWindow = {
+      APP_TRANSLATIONS: {},
+      location: { origin: 'https://example.com', search: '' }
+    };
+    const fetchMock = vi.fn(() => failTracking ? Promise.reject(new Error('offline')) : Promise.resolve({}));
+    const initialize = new Function(
+      'window', 'document', 'fetch', 'setTimeout', 'clearTimeout',
+      '(' + formLogicFn.toString() + ')(); return window.formData();'
+    );
+    const data = initialize(fakeWindow, { querySelector: () => null }, fetchMock, () => 1, () => {});
+
+    for (const input of ['vless://first', 'vless://second']) {
+      data.input = input;
+      await data.submitForm();
+      const [path, options] = fetchMock.mock.calls.at(-1);
+      const payload = JSON.parse(options.body);
+
+      expect(path).toBe('/track-input');
+      expect(options.method).toBe('POST');
+      expect(payload.input).toBe(input);
+      expect(Object.keys(payload.outputSources)).toEqual(['xray', 'singbox', 'clash', 'surge']);
+      expect(payload.outputSources).toEqual(data.generatedLinks);
+      for (const url of Object.values(payload.outputSources)) {
+        expect(new URL(url).searchParams.get('config')).toBe(input);
+      }
+      expect(data.loading).toBe(false);
+    }
   });
 });

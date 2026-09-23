@@ -6,6 +6,8 @@ const LOG_PREFIX = 'inlog:';
 const TS_WIDTH = 16;
 const MAX_SOURCES = 200;
 const MAX_SOURCE_LEN = 2048;
+const MAX_OUTPUT_SOURCES = 20;
+const MAX_OUTPUT_SOURCE_LEN = 8192;
 // Records auto-expire so the log self-prunes; overridable via INPUT_LOG_TTL_SECONDS.
 const DEFAULT_TTL_SECONDS = 40 * 24 * 60 * 60;
 
@@ -27,6 +29,7 @@ export class InputLogService {
         const sources = normalizeSources(payload.input);
         // Nothing meaningful to record without at least one source line.
         if (sources.length === 0) return null;
+        const outputSources = normalizeOutputSources(payload.outputSources);
 
         const createdAt = Date.now();
         const key = `${LOG_PREFIX}${String(createdAt).padStart(TS_WIDTH, '0')}-${randomSuffix()}`;
@@ -34,6 +37,7 @@ export class InputLogService {
             createdAt,
             target: typeof payload.configType === 'string' ? payload.configType : null,
             sources,
+            outputSources,
             options: sanitizeOptions(payload.options),
             client: {
                 ua: context.clientUa || null,
@@ -93,6 +97,33 @@ function normalizeSources(input) {
         .filter(Boolean)
         .slice(0, MAX_SOURCES)
         .map((line) => (line.length > MAX_SOURCE_LEN ? line.slice(0, MAX_SOURCE_LEN) : line));
+}
+
+function normalizeOutputSources(input) {
+    if (!input || typeof input !== 'object') return [];
+
+    const entries = Array.isArray(input)
+        ? input.map((item) => [item?.type, item?.url])
+        : Object.entries(input);
+
+    return entries
+        .map(([type, url]) => ({
+            type: typeof type === 'string' ? type.trim().slice(0, 32) : '',
+            url: typeof url === 'string' ? url.trim() : ''
+        }))
+        // Only keep navigable web URLs so public tracking requests cannot plant javascript links in the admin page.
+        // Reject oversized URLs intact: truncating a query can change or break its subscription.
+        .filter((entry) => entry.type && entry.url.length <= MAX_OUTPUT_SOURCE_LEN && isWebUrl(entry.url))
+        .slice(0, MAX_OUTPUT_SOURCES);
+}
+
+function isWebUrl(value) {
+    try {
+        const protocol = new URL(value).protocol;
+        return protocol === 'http:' || protocol === 'https:';
+    } catch {
+        return false;
+    }
 }
 
 function sanitizeOptions(options) {

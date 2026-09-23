@@ -178,6 +178,10 @@ dist
 CLAUDE.local.md
 AGENTS.local.md
 .claude/settings.local.json
+.claude/skills/
+
+# Local subscription sample contains proxy credentials.
+/sub_raw.txt
 
 # Local planning
 .roadmap/

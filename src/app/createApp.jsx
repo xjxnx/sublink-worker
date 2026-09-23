@@ -785,6 +785,15 @@ th { color: #94a3b8; font-weight: 600; white-space: nowrap; }
 code { background: #1e293b; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
 ul { margin: 0; padding-left: 16px; }
 li { word-break: break-all; margin-bottom: 2px; }
+.output-sources { list-style: none; padding: 0; width: 180px; }
+.output-sources li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px; margin-bottom: 8px; }
+.output-sources li:last-child { margin-bottom: 0; }
+.output-sources details { min-width: 0; }
+.output-sources summary { cursor: pointer; padding: 4px 0; white-space: nowrap; color: #93c5fd; }
+.output-sources a { display: block; margin-top: 8px; max-height: 160px; overflow: auto; overflow-wrap: anywhere; color: #93c5fd; font-size: 12px; }
+.copy-btn { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.copy-btn:hover { background: #334155; }
+.copy-btn:focus-visible, .output-sources summary:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
 .muted { color: #64748b; }
 .empty { padding: 40px; text-align: center; color: #94a3b8; }
 .del-btn { background: #7f1d1d; color: #fecaca; border: 1px solid #991b1b; border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
@@ -792,9 +801,21 @@ li { word-break: break-all; margin-bottom: 2px; }
 .del-btn:disabled { opacity: 0.5; cursor: default; }
 `;
 
-// Inline so the static admin page can delete a record without a client framework.
-// Token is read from the current URL so the DELETE request stays authenticated.
+// Inline so the admin page stays interactive without a client framework.
 const ADMIN_PAGE_SCRIPT = `
+async function copyOutput(btn) {
+    var url = btn.closest('li').querySelector('a').getAttribute('href');
+    try {
+        await navigator.clipboard.writeText(url);
+        btn.textContent = '已复制';
+    } catch {
+        btn.textContent = '复制失败';
+        btn.closest('li').querySelector('details').open = true;
+    }
+    clearTimeout(btn.copyTimer);
+    btn.copyTimer = setTimeout(function () { btn.textContent = '复制'; }, 2000);
+}
+
 function delInput(btn, key) {
     if (!confirm('确认删除这条记录？')) return;
     btn.disabled = true;
@@ -844,6 +865,7 @@ function AdminInputsPage({ entries }) {
                                 <th>转换时间 (UTC)</th>
                                 <th>目标</th>
                                 <th>输入源</th>
+                                <th>输出源</th>
                                 <th>其它参数</th>
                                 <th>客户端</th>
                                 <th>操作</th>
@@ -859,6 +881,37 @@ function AdminInputsPage({ entries }) {
                                             <ul>
                                                 {entry.sources.map((src) => (
                                                     <li>{src}</li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <span class="muted">-</span>
+                                        )}
+                                    </td>
+                                    <td>
+                                        {entry.outputSources && entry.outputSources.length > 0 ? (
+                                            <ul class="output-sources">
+                                                {entry.outputSources.map((output) => (
+                                                    <li>
+                                                        <details>
+                                                            <summary><code>{output.type}</code></summary>
+                                                            <a
+                                                                href={output.url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                            >
+                                                                {output.url}
+                                                            </a>
+                                                        </details>
+                                                        <button
+                                                            type="button"
+                                                            class="copy-btn"
+                                                            onclick="copyOutput(this)"
+                                                            aria-label={`复制 ${output.type} 链接`}
+                                                            aria-live="polite"
+                                                        >
+                                                            复制
+                                                        </button>
+                                                    </li>
                                                 ))}
                                             </ul>
                                         ) : (

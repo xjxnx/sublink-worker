@@ -12,7 +12,10 @@ on:
       - 'docker-compose.yml'
       - 'src/**'
       - 'package.json'
-      - 'package-lock.json'
+      - 'pnpm-lock.yaml'
+      - '.npmrc'
+      - 'tailwind.config.cjs'
+      - 'public/**'
       - '.github/workflows/docker-image.yml'
   workflow_dispatch:
 

@@ -474,7 +474,12 @@ export const formLogicFn = (t) => {
                     fetch('/track-input', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ input: this.input, configType: this.configType, options })
+                        body: JSON.stringify({
+                            input: this.input,
+                            configType: this.configType,
+                            outputSources: this.generatedLinks,
+                            options
+                        })
                     }).catch(() => {});
                 } catch {}
             },
