@@ -38,13 +38,19 @@ export const Form = (props) => {
     customShortCode: t('customShortCode'),
     optional: t('optional'),
     customShortCodePlaceholder: t('customShortCodePlaceholder'),
-    showFullLinks: t('showFullLinks')
+    showFullLinks: t('showFullLinks'),
+    settingsWrongPassword: t('settingsWrongPassword'),
+    settingsTooManyAttempts: t('settingsTooManyAttempts'),
+    settingsRequestFailed: t('settingsRequestFailed'),
+    settingsSessionExpired: t('settingsSessionExpired'),
+    settingsLinkOnCopy: t('settingsLinkOnCopy')
   };
 
   const scriptContent = `
     window.APP_TRANSLATIONS = ${JSON.stringify(translations)};
     window.PREDEFINED_RULE_SETS = ${JSON.stringify(PREDEFINED_RULE_SETS)};
     window.APP_LANG = ${JSON.stringify(lang || 'zh-CN')};
+    window.GENERAL_SETTINGS_PROTECTED = ${Boolean(props.generalSettingsProtected)};
     if (typeof __name === 'undefined') { var __name = function(fn) { return fn; }; }
     (${formLogicFn.toString()})();
   `;
@@ -192,7 +198,33 @@ export const Form = (props) => {
               {t('generalSettings')}
             </h3>
 
-            <div class="space-y-2.5">
+            {props.generalSettingsProtected && (
+              <div class="mb-4">
+                <div x-show="!generalSettingsUnlocked" class="space-y-3">
+                  <p class="text-xs leading-relaxed text-gray-500 dark:text-gray-400">{t('settingsLockedHint')}</p>
+                  <label for="settings-password" class="block text-xs font-medium text-gray-700 dark:text-gray-300">{t('settingsPassword')}</label>
+                  <input
+                    id="settings-password"
+                    type="password"
+                    autocomplete="current-password"
+                    x-model="settingsPassword"
+                    maxlength="1024"
+                    {...{ 'x-on:keydown.enter.prevent': 'unlockGeneralSettings()' }}
+                    class="w-full px-3 py-2 rounded-xl border border-gray-200/70 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  <button type="button" x-on:click="unlockGeneralSettings()" x-bind:disabled="settingsBusy || !settingsPassword" class="w-full px-3 py-2 rounded-xl btn-primary text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fas fa-lock-open mr-2" aria-hidden="true"></i>{t('settingsUnlock')}
+                  </button>
+                </div>
+                <div x-cloak x-show="generalSettingsUnlocked" class="flex items-center justify-between gap-2 text-xs">
+                  <span class="text-emerald-600 dark:text-emerald-400"><i class="fas fa-unlock mr-1" aria-hidden="true"></i>{t('settingsUnlocked')}</span>
+                  <button type="button" x-on:click="lockGeneralSettings()" x-bind:disabled="settingsBusy" class="px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 disabled:opacity-50">{t('settingsLock')}</button>
+                </div>
+                <p x-cloak x-show="settingsError" x-text="settingsError" role="alert" class="mt-2 text-xs text-red-600 dark:text-red-400"></p>
+              </div>
+            )}
+
+            <fieldset disabled={props.generalSettingsProtected || undefined} x-bind:disabled="!canUseGeneralSettings()" x-bind:class="!canUseGeneralSettings() ? 'opacity-50' : ''" class="space-y-2.5 min-w-0" aria-label={t('generalSettings')}>
               <label class="flex items-center justify-between p-2.5 rounded-xl bg-gray-50/60 dark:bg-gray-800/40 hover:bg-gray-100/80 dark:hover:bg-gray-700/40 transition-colors cursor-pointer gap-3">
                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{t('groupByCountry')}</span>
                 <div class="relative inline-flex items-center cursor-pointer shrink-0">
@@ -279,7 +311,7 @@ export const Form = (props) => {
                   <input type="number" min="1" max="50" {...{ 'x-model.number': 'multiPortCount' }} class="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-200/70 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors" placeholder="3" />
                 </div>
               </div>
-            </div>
+            </fieldset>
           </div>
 
           {/* Custom Rules - full width */}
@@ -297,7 +329,7 @@ export const Form = (props) => {
             </h3>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">{t('subconverterConfigDesc')}</p>
             <div class="px-3 py-2.5 rounded-xl border border-gray-200/70 dark:border-gray-700 bg-gray-900/95 dark:bg-black/40">
-              <p class="font-mono text-xs text-emerald-300 dark:text-emerald-300 break-all leading-relaxed" x-text="getSubconverterUrl()"></p>
+              <p class="font-mono text-xs text-emerald-300 dark:text-emerald-300 break-all leading-relaxed" x-text="getSubconverterPreview()"></p>
             </div>
             <div class="mt-3 flex justify-end">
               <button

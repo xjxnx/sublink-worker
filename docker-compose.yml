@@ -9,6 +9,7 @@ services:
       REDIS_PORT: 6379
       REDIS_KEY_PREFIX: sublink
       CONFIG_TTL_SECONDS: 2592000
+      GENERAL_SETTINGS_PASSWORD: ${GENERAL_SETTINGS_PASSWORD:-}
     depends_on:
       - redis
   redis:

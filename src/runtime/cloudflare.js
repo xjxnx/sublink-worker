@@ -6,7 +6,8 @@ export function createCloudflareRuntime(env) {
         assetFetcher: env?.ASSETS ? (request) => env.ASSETS.fetch(request) : null,
         logger: console,
         config: {
-            adminToken: env?.ADMIN_TOKEN || null
+            adminToken: env?.ADMIN_TOKEN || null,
+            generalSettingsPassword: env?.GENERAL_SETTINGS_PASSWORD || null
         }
     };
 }

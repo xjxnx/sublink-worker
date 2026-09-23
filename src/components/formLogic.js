@@ -83,6 +83,13 @@ export const formLogicFn = (t) => {
             selectedRules: [],
             selectedPredefinedRule: 'balanced',
             subconverterCopied: false,
+            signedSubconverterUrl: '',
+            signedSubconverterSource: '',
+            generalSettingsProtected: Boolean(window.GENERAL_SETTINGS_PROTECTED),
+            generalSettingsUnlocked: !window.GENERAL_SETTINGS_PROTECTED,
+            settingsPassword: '',
+            settingsBusy: false,
+            settingsError: '',
             groupByCountry: false,
             includeAutoSelect: true,
             excludeInvalidNodes: false,
@@ -193,6 +200,92 @@ export const formLogicFn = (t) => {
                 });
                 this.$watch('customShortCode', val => localStorage.setItem('customShortCode', val));
                 this.$watch('accordionSections', val => localStorage.setItem('accordionSections', JSON.stringify(val)), { deep: true });
+                if (this.generalSettingsProtected) {
+                    fetch('/general-settings/session')
+                        .then(response => response.ok ? response.json() : { unlocked: false })
+                        .then(status => { this.generalSettingsUnlocked = status.unlocked === true; })
+                        .catch(() => { this.generalSettingsUnlocked = false; });
+                }
+            },
+
+            async unlockGeneralSettings() {
+                if (this.settingsBusy || !this.settingsPassword) return;
+                this.settingsBusy = true;
+                this.settingsError = '';
+                try {
+                    const response = await fetch('/general-settings/unlock', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ password: this.settingsPassword })
+                    });
+                    if (!response.ok) {
+                        this.settingsError = window.APP_TRANSLATIONS[response.status === 429 ? 'settingsTooManyAttempts' :
+                            response.status === 403 ? 'settingsWrongPassword' : 'settingsRequestFailed'];
+                        return;
+                    }
+                    this.generalSettingsUnlocked = true;
+                } catch {
+                    this.settingsError = window.APP_TRANSLATIONS.settingsRequestFailed;
+                } finally {
+                    this.settingsPassword = '';
+                    this.settingsBusy = false;
+                }
+            },
+
+            async lockGeneralSettings() {
+                if (this.settingsBusy) return;
+                this.settingsBusy = true;
+                this.settingsError = '';
+                try {
+                    const response = await fetch('/general-settings/session', { method: 'DELETE' });
+                    if (!response.ok) throw new Error('Unable to lock settings');
+                    this.generalSettingsUnlocked = false;
+                    this.generatedLinks = null;
+                    this.shortenedLinks = null;
+                    this.signedSubconverterUrl = '';
+                } catch {
+                    this.settingsError = window.APP_TRANSLATIONS.settingsRequestFailed;
+                } finally {
+                    this.settingsBusy = false;
+                }
+            },
+
+            canUseGeneralSettings() {
+                return !this.generalSettingsProtected || this.generalSettingsUnlocked;
+            },
+
+            async authorizeSettingsUrl(url) {
+                if (!this.generalSettingsProtected || !this.generalSettingsUnlocked) return url;
+                const response = await fetch('/general-settings/sign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        this.generalSettingsUnlocked = false;
+                        this.settingsError = window.APP_TRANSLATIONS.settingsSessionExpired;
+                        this.showAdvanced = true;
+                    }
+                    throw new Error('Unable to authorize general settings');
+                }
+                return (await response.json()).url;
+            },
+
+            appendGeneralSettings(params, subconverter = false) {
+                if (!this.canUseGeneralSettings()) return;
+                if (this.groupByCountry) params.append('group_by_country', 'true');
+                if (!this.includeAutoSelect) params.append('include_auto_select', 'false');
+                if (subconverter) return;
+                if (this.excludeInvalidNodes) params.append('exclude_invalid_nodes', 'true');
+                if (this.enableClashUI) params.append('enable_clash_ui', 'true');
+                if (this.externalController) params.append('external_controller', this.externalController);
+                if (this.externalUiDownloadUrl) params.append('external_ui_download_url', this.externalUiDownloadUrl);
+                if (this.multiPort) {
+                    params.append('multiPort', 'true');
+                    params.append('basePort', String(this.multiPortBasePort));
+                    params.append('count', String(this.multiPortCount));
+                }
             },
 
             toggleAccordion(section) {
@@ -229,17 +322,7 @@ export const formLogicFn = (t) => {
                     }
                 } catch { }
 
-                if (!this.includeAutoSelect) {
-                    params.append('include_auto_select', 'false');
-                }
-
-                if (this.groupByCountry) {
-                    params.append('group_by_country', 'true');
-                }
-
-                if (this.excludeInvalidNodes) {
-                    params.append('exclude_invalid_nodes', 'true');
-                }
+                this.appendGeneralSettings(params, true);
 
                 // Include lang parameter so subconverter gets correct group names
                 const appLang = window.APP_LANG || 'zh-CN';
@@ -251,12 +334,25 @@ export const formLogicFn = (t) => {
                 return origin + '/subconverter' + (queryString ? '?' + queryString : '');
             },
 
-            copySubconverterUrl() {
-                const url = this.getSubconverterUrl();
-                navigator.clipboard.writeText(url).then(() => {
+            getSubconverterPreview() {
+                const source = this.getSubconverterUrl();
+                if (this.signedSubconverterSource === source && this.signedSubconverterUrl) return this.signedSubconverterUrl;
+                return this.generalSettingsProtected && this.generalSettingsUnlocked
+                    ? window.APP_TRANSLATIONS.settingsLinkOnCopy : source;
+            },
+
+            async copySubconverterUrl() {
+                try {
+                    const source = this.getSubconverterUrl();
+                    const url = await this.authorizeSettingsUrl(source);
+                    this.signedSubconverterSource = source;
+                    this.signedSubconverterUrl = url;
+                    await navigator.clipboard.writeText(url);
                     this.subconverterCopied = true;
                     setTimeout(() => this.subconverterCopied = false, 2000);
-                }).catch(() => {});
+                } catch {
+                    alert(this.settingsError || window.APP_TRANSLATIONS.settingsRequestFailed);
+                }
             },
 
             resetConfigValidation() {
@@ -383,7 +479,9 @@ export const formLogicFn = (t) => {
             },
 
             async submitForm() {
+                if (this.loading) return;
                 this.loading = true;
+                this.generatedLinks = null;
                 this.shortenedLinks = null; // Reset shortened links when generating new links
                 try {
                     // Get custom rules from the child component via the hidden input
@@ -398,17 +496,7 @@ export const formLogicFn = (t) => {
                     params.append('selectedRules', JSON.stringify(this.selectedRules));
                     params.append('customRules', JSON.stringify(customRules));
 
-                    if (this.groupByCountry) params.append('group_by_country', 'true');
-                    if (!this.includeAutoSelect) params.append('include_auto_select', 'false');
-                    if (this.excludeInvalidNodes) params.append('exclude_invalid_nodes', 'true');
-                    if (this.enableClashUI) params.append('enable_clash_ui', 'true');
-                    if (this.externalController) params.append('external_controller', this.externalController);
-                    if (this.externalUiDownloadUrl) params.append('external_ui_download_url', this.externalUiDownloadUrl);
-                    if (this.multiPort) {
-                        params.append('multiPort', 'true');
-                        params.append('basePort', String(this.multiPortBasePort));
-                        params.append('count', String(this.multiPortCount));
-                    }
+                    this.appendGeneralSettings(params);
 
                     // Add configId if present in URL
                     const urlParams = new URLSearchParams(window.location.search);
@@ -417,7 +505,8 @@ export const formLogicFn = (t) => {
                         params.append('configId', configId);
                     }
 
-                    const queryString = params.toString();
+                    const authorizedUrl = await this.authorizeSettingsUrl(origin + '/singbox?' + params.toString());
+                    const queryString = new URL(authorizedUrl).search.slice(1);
 
                     this.generatedLinks = {
                         xray: origin + '/xray?' + queryString,
@@ -426,8 +515,7 @@ export const formLogicFn = (t) => {
                         surge: origin + '/surge?' + queryString
                     };
 
-                    // Link generation is synchronous, so the loading spinner never paints.
-                    // Flash a short success state on the button so the click is clearly acknowledged.
+                    // Brief feedback also acknowledges fast local conversions.
                     if (this.justConvertedTimer) clearTimeout(this.justConvertedTimer);
                     this.justConverted = true;
                     this.justConvertedTimer = setTimeout(() => { this.justConverted = false; }, 2000);
@@ -445,7 +533,7 @@ export const formLogicFn = (t) => {
 
                 } catch (error) {
                     console.error('Error generating links:', error);
-                    alert(window.APP_TRANSLATIONS.errorGeneratingLinks);
+                    alert(this.settingsError || window.APP_TRANSLATIONS.errorGeneratingLinks);
                 } finally {
                     this.loading = false;
                 }
@@ -453,6 +541,7 @@ export const formLogicFn = (t) => {
 
             trackInput(customRules) {
                 if (!this.input || !this.input.trim()) return;
+                const useGeneralSettings = this.canUseGeneralSettings();
 
                 const options = {
                     selectedRules:
@@ -461,11 +550,11 @@ export const formLogicFn = (t) => {
                             : JSON.stringify(this.selectedRules),
                     customRules: Array.isArray(customRules) && customRules.length > 0 ? JSON.stringify(customRules) : '',
                     ua: this.customUA || '',
-                    group_by_country: this.groupByCountry ? 'true' : '',
-                    include_auto_select: this.includeAutoSelect ? '' : 'false',
-                    exclude_invalid_nodes: this.excludeInvalidNodes ? 'true' : '',
-                    enable_clash_ui: this.enableClashUI ? 'true' : '',
-                    external_controller: this.externalController || '',
+                    group_by_country: useGeneralSettings && this.groupByCountry ? 'true' : '',
+                    include_auto_select: useGeneralSettings && !this.includeAutoSelect ? 'false' : '',
+                    exclude_invalid_nodes: useGeneralSettings && this.excludeInvalidNodes ? 'true' : '',
+                    enable_clash_ui: useGeneralSettings && this.enableClashUI ? 'true' : '',
+                    external_controller: useGeneralSettings ? this.externalController || '' : '',
                     configId: this.currentConfigId || ''
                 };
 

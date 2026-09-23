@@ -19,6 +19,7 @@ import { ConfigStorageService } from '../services/configStorageService.js';
 import { InputLogService } from '../services/inputLogService.js';
 import { ServiceError, MissingDependencyError } from '../services/errors.js';
 import { normalizeRuntime } from '../runtime/runtimeConfig.js';
+import { registerGeneralSettingsAccess } from './generalSettingsAccess.js';
 import { PREDEFINED_RULE_SETS, SING_BOX_CONFIG, SING_BOX_CONFIG_V1_11, generateSubconverterConfig } from '../config/index.js';
 
 const DEFAULT_USER_AGENT = 'curl/7.74.0';
@@ -45,6 +46,7 @@ const NON_INDEXABLE_PATHS = [
     '/shorten-v2',
     '/resolve',
     '/config',
+    '/general-settings',
     '/admin',
     '/s/',
     '/b/',
@@ -108,6 +110,7 @@ export function createApp(bindings = {}) {
     };
 
     const app = new Hono();
+    const generalSettingsAccess = registerGeneralSettingsAccess(app, runtime.config.generalSettingsPassword);
 
     app.use('*', async (c, next) => {
         const acceptLanguage = getRequestHeader(c.req, 'Accept-Language');
@@ -157,7 +160,7 @@ export function createApp(bindings = {}) {
                                         {subtitle}
                                     </p>
                                 </div>
-                                <Form t={t} lang={lang} />
+                                <Form t={t} lang={lang} generalSettingsProtected={generalSettingsAccess.enabled} />
                             </div>
                         </div>
                     </main>

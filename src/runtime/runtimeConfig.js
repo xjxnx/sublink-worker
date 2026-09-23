@@ -42,7 +42,8 @@ export function normalizeRuntime(runtime = {}) {
             configTtlSeconds: runtime.config?.configTtlSeconds ?? DEFAULTS.configTtlSeconds,
             shortLinkTtlSeconds: runtime.config?.shortLinkTtlSeconds ?? null,
             inputLogTtlSeconds: runtime.config?.inputLogTtlSeconds ?? null,
-            adminToken: runtime.config?.adminToken || null
+            adminToken: runtime.config?.adminToken || null,
+            generalSettingsPassword: runtime.config?.generalSettingsPassword || null
         }
     };
 }

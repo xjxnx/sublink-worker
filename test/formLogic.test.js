@@ -63,3 +63,93 @@ describe('formLogic toString fix', () => {
     }
   });
 });
+
+describe('general settings form access', () => {
+  const setup = (fetchMock = vi.fn()) => {
+    const fakeWindow = {
+      GENERAL_SETTINGS_PROTECTED: true,
+      APP_TRANSLATIONS: {
+        settingsWrongPassword: 'wrong password',
+        settingsSessionExpired: 'expired',
+        settingsRequestFailed: 'failed'
+      },
+      location: { origin: 'https://example.com', search: '' }
+    };
+    const alert = vi.fn();
+    const navigator = { clipboard: { writeText: vi.fn(async () => {}) } };
+    const initialize = new Function(
+      'window', 'document', 'fetch', 'setTimeout', 'clearTimeout', 'alert', 'navigator',
+      '(' + formLogicFn.toString() + ')(); return window.formData();'
+    );
+    const data = initialize(fakeWindow, { querySelector: () => null }, fetchMock, () => 1, () => {}, alert, navigator);
+    data.input = 'trojan://secret@example.com:443#test';
+    return { data, alert, navigator };
+  };
+
+  it('ignores restored or imported general settings while locked', async () => {
+    const fetchMock = vi.fn(async () => ({}));
+    const { data } = setup(fetchMock);
+    Object.assign(data, {
+      groupByCountry: true, includeAutoSelect: false, excludeInvalidNodes: true,
+      enableClashUI: true, externalController: '0.0.0.0:9090', multiPort: true
+    });
+    await data.submitForm();
+    for (const url of [...Object.values(data.generatedLinks), data.getSubconverterUrl()]) {
+      const params = new URL(url).searchParams;
+      for (const key of ['group_by_country', 'include_auto_select', 'exclude_invalid_nodes', 'enable_clash_ui', 'multiPort', 'external_controller']) {
+        expect(params.has(key)).toBe(false);
+      }
+    }
+    expect(fetchMock.mock.calls.every(([url]) => url === '/track-input')).toBe(true);
+  });
+
+  it('clears entered passwords on success and failure', async () => {
+    const fetchMock = vi.fn(async () => ({ ok: false, status: 403 }));
+    const { data } = setup(fetchMock);
+    data.settingsPassword = 'wrong';
+    await data.unlockGeneralSettings();
+    expect(data.settingsPassword).toBe('');
+    expect(data.settingsError).toBe('wrong password');
+    expect(data.generalSettingsUnlocked).toBe(false);
+    fetchMock.mockResolvedValue({ ok: true });
+    data.settingsPassword = 'correct-password';
+    await data.unlockGeneralSettings();
+    expect(data.settingsPassword).toBe('');
+    expect(data.settingsError).toBe('');
+    expect(data.generalSettingsUnlocked).toBe(true);
+    expect(fetchMock.mock.calls.at(-1)[1].body).toBe(JSON.stringify({ password: 'correct-password' }));
+  });
+
+  it('includes server authorization in generated and copied links', async () => {
+    const fetchMock = vi.fn(async (path, options) => {
+      if (path !== '/general-settings/sign') return {};
+      const url = new URL(JSON.parse(options.body).url);
+      url.searchParams.set('settings_token', 'signed-token');
+      return { ok: true, json: async () => ({ url: url.toString() }) };
+    });
+    const { data, navigator } = setup(fetchMock);
+    data.generalSettingsUnlocked = true;
+    data.groupByCountry = true;
+    await data.submitForm();
+    for (const url of Object.values(data.generatedLinks)) {
+      expect(new URL(url).searchParams.get('settings_token')).toBe('signed-token');
+      expect(new URL(url).searchParams.get('group_by_country')).toBe('true');
+    }
+    await data.copySubconverterUrl();
+    const copied = navigator.clipboard.writeText.mock.calls[0][0];
+    expect(new URL(copied).pathname).toBe('/subconverter');
+    expect(new URL(copied).searchParams.get('settings_token')).toBe('signed-token');
+    expect(data.getSubconverterPreview()).toBe(copied);
+  });
+
+  it('relocks an expired session without publishing unsigned or stale links', async () => {
+    const { data, alert } = setup(vi.fn(async () => ({ ok: false, status: 403 })));
+    data.generalSettingsUnlocked = true;
+    data.groupByCountry = true;
+    data.generatedLinks = { clash: 'old-link' };
+    await data.submitForm();
+    expect(data.generalSettingsUnlocked).toBe(false);
+    expect(data.generatedLinks).toBeNull();
+    expect(alert).toHaveBeenCalledWith('expired');
+  });
+});

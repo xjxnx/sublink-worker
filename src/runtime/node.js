@@ -1,10 +1,13 @@
 import Redis from 'ioredis';
+import { webcrypto } from 'node:crypto';
 import { createFileAssetFetcher } from '../adapters/assets/fileAssetFetcher.js';
 import { UpstashKVAdapter } from '../adapters/kv/upstashKv.js';
 import { MemoryKVAdapter } from '../adapters/kv/memoryKv.js';
 import { RedisKVAdapter } from '../adapters/kv/redisKv.js';
 
 export function createNodeRuntime(env = process.env) {
+    // Node 18 does not expose Web Crypto globally in every launch mode.
+    globalThis.crypto ??= webcrypto;
     return {
         kv: resolveKv(env),
         assetFetcher: createFileAssetFetcher(env.STATIC_DIR || 'public'),
@@ -13,7 +16,8 @@ export function createNodeRuntime(env = process.env) {
             configTtlSeconds: parseNumber(env.CONFIG_TTL_SECONDS) || undefined,
             shortLinkTtlSeconds: parseNumber(env.SHORT_LINK_TTL_SECONDS) || null,
             inputLogTtlSeconds: parseNumber(env.INPUT_LOG_TTL_SECONDS) || null,
-            adminToken: env.ADMIN_TOKEN || null
+            adminToken: env.ADMIN_TOKEN || null,
+            generalSettingsPassword: env.GENERAL_SETTINGS_PASSWORD || null
         }
     };
 }

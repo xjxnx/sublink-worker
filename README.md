@@ -64,6 +64,18 @@ npm run dev
 - **Node.js**：运行 `npm run build:node`，然后执行 `node dist/node-server.cjs`；生产环境建议配置 Redis 或 Upstash 保存数据。
 - **Docker Compose**：运行 `docker compose up -d`，会同时启动服务与 Redis。仓库现有 Compose 默认使用上游镜像 `ghcr.io/7sageer/sublink-worker:latest`，不包含本仓库的界面定制；使用本仓库版本时，需将 `SUBLINK_WORKER_IMAGE` 指向从本仓库构建的镜像。
 
+## 通用设置密码保护
+
+设置环境变量 `GENERAL_SETTINGS_PASSWORD` 后，用户需要输入密码才能调整通用设置中的国家分组、自动选择分组、无效节点过滤、Clash API 和多端口监听。未解锁时仍可按默认设置转换。未配置该变量时保持原有开放行为。
+
+- **Cloudflare Workers**：在控制台的变量与机密中添加同名 Secret，或运行 `npx wrangler secret put GENERAL_SETTINGS_PASSWORD`；本地开发可放在不提交的 `.dev.vars` 中。
+- **Node.js / Vercel**：设置同名环境变量后重启服务或重新部署。
+- **Docker Compose**：在本地 `.env` 中设置该变量，并使用从本仓库构建的镜像。
+
+建议使用至少 16 位随机密码，并通过 HTTPS 访问。密码仅提交给解锁接口，不写入订阅链接或浏览器本地存储；解锁会话有效期为 12 小时。转换接口也会校验授权，直接添加通用设置参数无法绕过。
+
+已授权的订阅和短链接可供客户端持续更新；授权绑定订阅源和参数，修改后需重新解锁生成。持有链接的人可以使用该订阅，但不能用它解锁设置。重新锁定只结束当前浏览器会话，不撤销已生成链接；更换密码会撤销已有会话和链接授权。启用保护后，含非默认通用设置的旧链接需要重新生成。基础配置和导入的完整配置不在此密码保护范围内。
+
 ## 参考文档与致谢
 
 本项目基于 [7Sageer/sublink-worker](https://github.com/7Sageer/sublink-worker) 定制，感谢原作者与社区贡献者。当前站点以「clash订阅转换」为名称，使用与前端一致的蓝色盾牌 S 标志。
