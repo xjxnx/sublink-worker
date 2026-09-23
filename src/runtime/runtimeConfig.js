@@ -13,6 +13,7 @@
  * @typedef {Object} RuntimeConfig
  * @property {number} [configTtlSeconds]
  * @property {number} [shortLinkTtlSeconds]
+ * @property {boolean} [forceHttps]
  */
 
 /**
@@ -39,6 +40,7 @@ export function normalizeRuntime(runtime = {}) {
         assetFetcher: runtime.assetFetcher ?? null,
         logger: runtime.logger ?? console,
         config: {
+            forceHttps: runtime.config?.forceHttps ?? false,
             configTtlSeconds: runtime.config?.configTtlSeconds ?? DEFAULTS.configTtlSeconds,
             shortLinkTtlSeconds: runtime.config?.shortLinkTtlSeconds ?? null,
             inputLogTtlSeconds: runtime.config?.inputLogTtlSeconds ?? null,

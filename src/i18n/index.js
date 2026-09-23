@@ -1,9 +1,11 @@
 import { APP_NAME } from '../constants.js';
+import { homeGuideTranslations } from './homeGuide.js';
 import { checkStartsWith } from "../utils.js";
 
 // 定义语言包
 export const translations = {
   'zh-CN': {
+    homeGuide: homeGuideTranslations['zh-CN'],
     enableClashUI: '启用 Clash API',
     enableClashUITip: '在 SingBox 配置中启用 Clash API (支持 Dashboard 面板)，默认端口 9090',
     externalController: '外部控制端口',
@@ -24,11 +26,9 @@ export const translations = {
     invalidFormat: '无效格式：',
     defaultRules: ['广告拦截', '谷歌服务', '国外媒体', '电报消息'],
     configValidationError: '配置验证错误：',
-    pageDescription: `${APP_NAME} - 订阅链接转换工具`,
+    pageDescription: '在线转换 Clash、Sing-Box、Surge 与 Xray/V2Ray 订阅。支持合并订阅地址、节点链接，导入 Clash YAML、Sing-Box JSON 和 Surge INI，选择分流规则并生成短链接。',
     pageKeywords: '订阅链接,转换,Xray,SingBox,Clash,Surge',
-    pageTitle: `${APP_NAME} - 订阅链接转换工具`,
-    ogTitle: `${APP_NAME} - 订阅链接转换工具`,
-    ogDescription: '一个强大的订阅链接转换工具，支持多种客户端格式',
+    pageTitle: `${APP_NAME} - Sing-Box、Surge、V2Ray 在线转换`,
     shareUrls: '输入源',
     urlPlaceholder: '支持粘贴：分享链接、Clash 配置、Sing-Box 配置、Surge 配置...',
     advancedOptions: '高级选项',
@@ -183,6 +183,7 @@ export const translations = {
     later: '稍后'
   },
   'en-US': {
+    homeGuide: homeGuideTranslations['en-US'],
     enableClashUI: 'Enable Clash API',
     enableClashUITip: 'Enable Clash API in SingBox config (Support Dashboard), default port 9090',
     externalController: 'External Controller',
@@ -203,11 +204,9 @@ export const translations = {
     invalidFormat: 'Invalid format: ',
     defaultRules: ['Ad Blocking', 'Google Services', 'Foreign Media', 'Telegram'],
     configValidationError: 'Config validation error: ',
-    pageDescription: `${APP_NAME} - Subscription Link Converter`,
+    pageDescription: 'Convert and merge subscriptions for Clash, Sing-Box, Surge and Xray/V2Ray. Import node links or YAML, JSON and INI configurations, choose routing rules and generate short links.',
     pageKeywords: 'subscription link,converter,Xray,SingBox,Clash,Surge',
-    pageTitle: `${APP_NAME} - Subscription Link Converter`,
-    ogTitle: `${APP_NAME} - Subscription Link Converter`,
-    ogDescription: 'A powerful subscription link converter supporting multiple client formats',
+    pageTitle: 'Subscription Link Converter for Clash, Sing-Box & Surge',
     shareUrls: 'Input Source',
     urlPlaceholder: 'Paste share links, Clash config, Sing-Box config, or Surge config...',
     advancedOptions: 'Advanced Options',
@@ -361,6 +360,7 @@ export const translations = {
     later: 'Later'
   },
   'fa': {
+    homeGuide: homeGuideTranslations.fa,
     missingInput: 'پارامتر ورودی وجود ندارد',
     missingConfig: 'پارامتر پیکربندی وجود ندارد',
     missingUrl: 'پارامتر URL وجود ندارد',
@@ -372,11 +372,9 @@ export const translations = {
     invalidFormat: 'فرمت نامعتبر: ',
     defaultRules: ['مسدودسازی تبلیغات', 'سرویس‌های گوگل', 'رسانه‌های خارجی', 'تلگرام'],
     configValidationError: 'خطای اعتبارسنجی پیکربندی: ',
-    pageDescription: `${APP_NAME} - مبدل لینک اشتراک`,
+    pageDescription: 'تبدیل و ادغام اشتراک برای Clash، Sing-Box، Surge و Xray/V2Ray. وارد کردن لینک نود و پیکربندی YAML، JSON یا INI، انتخاب قوانین مسیریابی و ساخت لینک کوتاه.',
     pageKeywords: 'لینک اشتراک,مبدل,Xray,SingBox,Clash,Surge',
-    pageTitle: `${APP_NAME} - مبدل لینک اشتراک`,
-    ogTitle: `${APP_NAME} - مبدل لینک اشتراک`,
-    ogDescription: 'یک مبدل قدرتمند لینک اشتراک با پشتیبانی از فرمت‌های مختلف',
+    pageTitle: 'مبدل اشتراک Clash، Sing-Box و Surge',
     shareUrls: 'منبع ورودی',
     urlPlaceholder: 'لینک‌های اشتراک، پیکربندی Clash، Sing-Box یا Surge را جایگذاری کنید...',
     advancedOptions: 'گزینه‌های پیشرفته',
@@ -530,6 +528,7 @@ export const translations = {
     later: 'بعداً'
   },
   'ru': {
+    homeGuide: homeGuideTranslations.ru,
     missingInput: 'Отсутствует входной параметр',
     missingConfig: 'Отсутствует параметр конфигурации',
     missingUrl: 'Отсутствует параметр URL',
@@ -541,11 +540,9 @@ export const translations = {
     invalidFormat: 'Недопустимый формат: ',
     defaultRules: ['Блокировка рекламы', 'Сервисы Google', 'Зарубежные медиа', 'Telegram'],
     configValidationError: 'Ошибка проверки конфигурации: ',
-    pageDescription: `${APP_NAME} - инструмент для преобразования ссылок подписки`,
+    pageDescription: 'Конвертация и объединение подписок для Clash, Sing-Box, Surge и Xray/V2Ray. Импорт ссылок, YAML, JSON и INI, выбор правил маршрутизации и создание коротких ссылок.',
     pageKeywords: 'ссылка подписки,преобразование,Xray,SingBox,Clash,Surge',
-    pageTitle: `${APP_NAME} - инструмент для преобразования ссылок подписки`,
-    ogTitle: `${APP_NAME} - инструмент для преобразования ссылок подписки`,
-    ogDescription: 'Мощный инструмент для преобразования ссылок подписки, поддерживающий различные форматы клиентов',
+    pageTitle: 'Конвертер подписок Clash, Sing-Box и Surge',
     shareUrls: 'Источник ввода',
     urlPlaceholder: 'Вставьте ссылки, конфигурацию Clash, Sing-Box или Surge...',
     advancedOptions: 'Расширенные настройки',
@@ -701,7 +698,7 @@ export const translations = {
 };
 
 export function resolveLanguage(lang) {
-  if (translations[lang]) {
+  if (Object.hasOwn(translations, lang)) {
     return lang;
   } else if (checkStartsWith(lang, 'en')) {
     return 'en-US';

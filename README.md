@@ -4,7 +4,7 @@
   </a>
 
   <h1>clash订阅转换</h1>
-  <p><b>高效聚合与管理您的代理节点</b></p>
+  <p><b>合并订阅与节点链接，在线生成客户端订阅</b></p>
 
   <p>聚合订阅链接与节点，生成 Clash、Sing-Box、Xray/V2Ray、Surge 配置。<br>支持 Cloudflare Workers、Vercel、Node.js 和 Docker 部署。</p>
 
@@ -63,6 +63,16 @@ npm run dev
 - **Vercel**：点击顶部部署按钮，或运行 `vercel deploy`，并配置 `KV_REST_API_URL` 和 `KV_REST_API_TOKEN`。
 - **Node.js**：运行 `npm run build:node`，然后执行 `node dist/node-server.cjs`；生产环境建议配置 Redis 或 Upstash 保存数据。
 - **Docker Compose**：运行 `docker compose up -d`，会同时启动服务与 Redis。仓库现有 Compose 默认使用上游镜像 `ghcr.io/7sageer/sublink-worker:latest`，不包含本仓库的界面定制；使用本仓库版本时，需将 `SUBLINK_WORKER_IMAGE` 指向从本仓库构建的镜像。
+
+## 搜索引擎与公开网址
+
+中文首页固定使用 `/`，英文、波斯文和俄文分别使用 `/?lang=en-US`、`/?lang=fa` 和 `/?lang=ru`。旧的 `/?lang=zh-CN` 会永久跳转到 `/`，语言别名会跳转到对应的规范网址。首页语言只由网址决定，不随浏览器语言变化；订阅接口仍支持原有语言参数与请求头。
+
+Cloudflare Workers 和 Vercel 默认将首页、`/robots.txt`、`/sitemap.xml` 的 HTTP 请求以 `308` 跳转到 HTTPS。localhost 和回环地址保留 HTTP，便于本地开发。Node.js / Docker 在反向代理提供 HTTPS 后设置 `FORCE_HTTPS=true` 启用相同行为，并让反向代理正确传递 `X-Forwarded-Proto`。需要通过局域网 HTTP 调试云端入口时，可设置 `FORCE_HTTPS=false`。
+
+这项跳转只处理公开页面；订阅和管理接口的既有地址、签名不会被改写。静态资源的全站 HTTPS 跳转可由 Cloudflare 或反向代理统一配置。
+
+部署后，在 Google Search Console 提交 `https://你的域名/sitemap.xml`。地图包含中文首页与三个语言版本，网址与页面 canonical、hreflang、导航链接一致。如果仍显示“无法抓取”，检查具体抓取错误和 Cloudflare 安全事件；本地或普通浏览器访问成功不等于 Google 抓取成功。站点地图可帮助发现页面，不保证收录或排名。
 
 ## 通用设置密码保护
 

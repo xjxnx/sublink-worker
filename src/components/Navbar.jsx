@@ -1,23 +1,17 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource hono/jsx */
 import { APP_NAME } from '../constants.js';
-
-const LANGUAGES = [
-    { code: 'zh-CN', label: '简体中文', short: '中' },
-    { code: 'en-US', label: 'English', short: 'EN' },
-    { code: 'fa', label: 'فارسی', short: 'FA' },
-    { code: 'ru', label: 'Русский', short: 'RU' }
-];
+import { SUPPORTED_LANGS as LANGUAGES, homePath } from '../i18n/languages.js';
 
 export const Navbar = (props) => {
-    const { lang = 'zh-CN' } = props || {};
+    const { lang = 'zh-CN', guideLabel = '使用说明' } = props || {};
     const current = LANGUAGES.find((item) => item.code === lang) || LANGUAGES[0];
 
     return (
         <nav class="fixed top-3 left-3 right-3 sm:top-4 sm:left-4 sm:right-4 z-50">
             <div class="glass-strong rounded-2xl shadow-soft">
                 <div class="flex items-center justify-between h-14 px-4 sm:px-6">
-                    <a href="/" class="group flex items-center gap-2.5 font-bold text-gray-900 dark:text-white transition-colors">
+                    <a href={homePath(current.code)} class="group flex items-center gap-2.5 font-bold text-gray-900 dark:text-white transition-colors">
                         <span class="relative flex items-center justify-center w-9 h-9 group-hover:scale-105 transition-transform duration-300">
                             <svg viewBox="0 0 64 64" fill="none" class="w-9 h-9 drop-shadow-[0_2px_6px_rgba(37,99,235,0.5)]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label={`${APP_NAME} logo`}>
                                 <defs>
@@ -52,6 +46,20 @@ export const Navbar = (props) => {
                     </a>
 
                     <div class="flex items-center gap-1.5 sm:gap-2">
+                        <button
+                            id="guide-toggle"
+                            type="button"
+                            x-on:click="toggleGuide()"
+                            aria-controls="guide-panel"
+                            aria-expanded="false"
+                            x-bind:aria-expanded="guideOpen"
+                            aria-label={guideLabel}
+                            title={guideLabel}
+                            class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-medium rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100/80 dark:hover:bg-gray-800/60 transition-colors cursor-pointer whitespace-nowrap"
+                        >
+                            <i class="fas fa-book-open text-xs" aria-hidden="true"></i>
+                            <span class="hidden sm:inline">{guideLabel}</span>
+                        </button>
                         {/* Language switcher */}
                         <div x-data="{ open: false }" class="relative">
                             <button
@@ -89,7 +97,7 @@ export const Navbar = (props) => {
                                 {LANGUAGES.map((item) => (
                                     <a
                                         key={item.code}
-                                        href={`?lang=${item.code}`}
+                                        href={homePath(item.code)}
                                         role="option"
                                         aria-selected={item.code === current.code}
                                         class="flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/30"

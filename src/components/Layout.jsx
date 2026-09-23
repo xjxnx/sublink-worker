@@ -97,6 +97,15 @@ export const Layout = (props) => {
         <script>
           function appData() {
             return {
+              guideOpen: false,
+              toggleGuide() {
+                this.guideOpen = !this.guideOpen;
+                if (this.guideOpen) {
+                  this.$nextTick(() => document.getElementById('guide').scrollIntoView({ behavior: 'smooth', block: 'start' }));
+                } else {
+                  document.getElementById('guide-toggle').focus();
+                }
+              },
               darkMode: localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches),
               toggleDarkMode() {
                 this.darkMode = !this.darkMode;

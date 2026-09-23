@@ -1,19 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { createApp } from '../src/app/createApp.jsx';
 import { MemoryKVAdapter } from '../src/adapters/kv/memoryKv.js';
+import { createCloudflareRuntime } from '../src/runtime/cloudflare.js';
 
 const ORIGIN = 'http://localhost';
 
-const createTestApp = () => createApp({
+const createTestApp = (config = {}) => createApp({
     kv: new MemoryKVAdapter(),
     assetFetcher: null,
     logger: console,
-    config: { configTtlSeconds: 60, shortLinkTtlSeconds: null }
+    config: { configTtlSeconds: 60, shortLinkTtlSeconds: null, ...config }
 });
 
 const fetchHome = async (lang) => {
     const app = createTestApp();
-    const url = lang ? `${ORIGIN}/?lang=${lang}` : `${ORIGIN}/`;
+    const url = lang && lang !== 'zh-CN' ? `${ORIGIN}/?lang=${lang}` : `${ORIGIN}/`;
     const res = await app.request(url);
     expect(res.status).toBe(200);
     return res.text();
@@ -44,7 +45,7 @@ describe('SEO: <html> lang/dir', () => {
 describe('SEO: meta description / keywords are localized', () => {
     it('zh-CN page emits Chinese description (not the previous hardcoded English string)', async () => {
         const html = await fetchHome('zh-CN');
-        expect(html).toContain('<meta name="description" content="clash订阅转换 - 订阅链接转换工具"');
+        expect(html).toContain('<meta name="description" content="在线转换 Clash、Sing-Box、Surge 与 Xray/V2Ray 订阅。');
         expect(html).not.toContain('Convert and optimize your subscription links easily');
     });
 
@@ -67,7 +68,8 @@ describe('SEO: canonical + hreflang', () => {
 
     it('emits a self-referencing hreflang entry', async () => {
         const html = await fetchHome('zh-CN');
-        expect(html).toContain(`<link rel="alternate" hreflang="zh-CN" href="${ORIGIN}/?lang=zh-CN" />`);
+        expect(html).toContain(`<link rel="canonical" href="${ORIGIN}/" />`);
+        expect(html).toContain(`<link rel="alternate" hreflang="zh-CN" href="${ORIGIN}/" />`);
     });
 
     it('emits the full hreflang set including x-default on every page', async () => {
@@ -79,7 +81,8 @@ describe('SEO: canonical + hreflang', () => {
             { hreflang: 'ru', code: 'ru' }
         ];
         for (const { hreflang, code } of expectedAlternates) {
-            expect(html).toContain(`<link rel="alternate" hreflang="${hreflang}" href="${ORIGIN}/?lang=${code}" />`);
+            const path = code === 'zh-CN' ? '/' : `/?lang=${code}`;
+            expect(html).toContain(`<link rel="alternate" hreflang="${hreflang}" href="${ORIGIN}${path}" />`);
         }
         expect(html).toContain(`<link rel="alternate" hreflang="x-default" href="${ORIGIN}/?lang=en-US" />`);
     });
@@ -89,8 +92,8 @@ describe('SEO: Open Graph + Twitter Card', () => {
     it('emits og:title / og:description / og:url / og:locale', async () => {
         const html = await fetchHome('zh-CN');
         expect(html).toMatch(/<meta property="og:type" content="website"/);
-        expect(html).toMatch(/<meta property="og:title" content="[^"]+订阅链接转换工具"/);
-        expect(html).toContain(`<meta property="og:url" content="${ORIGIN}/?lang=zh-CN"`);
+        expect(html).toMatch(/<meta property="og:title" content="[^"]+在线转换"/);
+        expect(html).toContain(`<meta property="og:url" content="${ORIGIN}/"`);
         expect(html).toMatch(/<meta property="og:locale" content="zh_CN"/);
     });
 
@@ -104,7 +107,7 @@ describe('SEO: Open Graph + Twitter Card', () => {
     it('emits twitter:card meta', async () => {
         const html = await fetchHome('en-US');
         expect(html).toMatch(/<meta name="twitter:card" content="summary"/);
-        expect(html).toMatch(/<meta name="twitter:title" content="[^"]+Subscription Link Converter"/);
+        expect(html).toMatch(/<meta name="twitter:title" content="Subscription Link Converter[^\"]*"/);
     });
 });
 
@@ -167,7 +170,9 @@ describe('SEO: /sitemap.xml route', () => {
         expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
         expect(xml).toContain('xmlns:xhtml="http://www.w3.org/1999/xhtml"');
 
-        for (const code of ['zh-CN', 'en-US', 'fa', 'ru']) {
+        expect(xml).toContain(`<loc>${ORIGIN}/</loc>`);
+        expect(xml).not.toContain('?lang=zh-CN');
+        for (const code of ['en-US', 'fa', 'ru']) {
             expect(xml).toContain(`<loc>${ORIGIN}/?lang=${code}</loc>`);
         }
 
@@ -181,5 +186,115 @@ describe('SEO: /sitemap.xml route', () => {
             expect(block).toContain('hreflang="ru"');
             expect(block).toContain('hreflang="x-default"');
         }
+    });
+});
+
+describe('SEO: stable public URLs', () => {
+    it.each(['en-US,en;q=0.9', 'fa', 'ru', 'zh-CN'])('serves the same Chinese homepage for Accept-Language: %s', async (acceptLanguage) => {
+        const app = createTestApp();
+        const response = await app.request(`${ORIGIN}/`, { headers: { 'Accept-Language': acceptLanguage } });
+        const html = await response.text();
+        expect(response.status).toBe(200);
+        expect(html).toMatch(/<html\s+lang="zh-CN"/);
+        expect(html).toContain(`<link rel="canonical" href="${ORIGIN}/" />`);
+    });
+
+    it.each([
+        ['?lang=zh-CN', '/'],
+        ['?lang=zh-TW', '/'],
+        ['?lang=', '/'],
+        ['?lang=unknown', '/'],
+        ['?lang=constructor', '/'],
+        ['?lang=__proto__', '/'],
+        ['?lang=toString', '/'],
+        ['?lang=en', '/?lang=en-US'],
+        ['?lang=en-GB&lang=ru', '/?lang=en-US'],
+        ['?lang=fa-IR', '/?lang=fa'],
+        ['?lang=ru-RU', '/?lang=ru'],
+        ['?lang=zh-CN&config=ss%3A%2F%2Fexample&utm_source=docs', '/?config=ss%3A%2F%2Fexample&utm_source=docs']
+    ])('permanently redirects %s to %s without a loop', async (query, expectedPath) => {
+        const app = createTestApp();
+        const response = await app.request(`${ORIGIN}/${query}`);
+        expect(response.status).toBe(308);
+        expect(response.headers.get('location')).toBe(`${ORIGIN}${expectedPath}`);
+        const resolved = await app.request(response.headers.get('location'));
+        expect(resolved.status).toBe(200);
+        expect(resolved.headers.get('location')).toBeNull();
+    });
+
+    it('merges HTTPS and Chinese canonical redirects into one hop', async () => {
+        const app = createApp(createCloudflareRuntime({}));
+        const response = await app.request('http://dy.524028.xyz/?lang=zh-CN&utm_source=docs');
+        expect(response.status).toBe(308);
+        expect(response.headers.get('location')).toBe('https://dy.524028.xyz/?utm_source=docs');
+        expect((await app.request(response.headers.get('location'))).status).toBe(200);
+    });
+
+    it.each(['/robots.txt', '/sitemap.xml'])('redirects HTTP %s including HEAD requests', async (path) => {
+        const app = createTestApp({ forceHttps: true });
+        for (const method of ['GET', 'HEAD']) {
+            const response = await app.request(`http://example.com${path}`, { method });
+            expect(response.status).toBe(308);
+            expect(response.headers.get('location')).toBe(`https://example.com${path}`);
+        }
+    });
+
+    it.each(['localhost', '127.0.0.1', '[::1]', 'preview.localhost'])('keeps local HTTP development usable on %s', async (hostname) => {
+        const response = await createTestApp({ forceHttps: true }).request(`http://${hostname}:8787/`);
+        expect(response.status).toBe(200);
+    });
+
+    it('allows explicitly configured HTTP deployments', async () => {
+        const app = createApp(createCloudflareRuntime({ FORCE_HTTPS: 'false' }));
+        const response = await app.request('http://example.com/');
+        expect(response.status).toBe(200);
+        expect(await response.text()).toContain('<link rel="canonical" href="http://example.com/"');
+    });
+
+    it('does not redirect existing subscription endpoints', async () => {
+        const app = createTestApp({ forceHttps: true });
+        const response = await app.request('http://example.com/clash?lang=zh-CN&settings_token=test');
+        expect(response.status).toBe(400);
+        expect(response.headers.get('location')).toBeNull();
+        expect(await response.text()).toBe('Missing config parameter');
+    });
+
+    it('lists only pages that return 200 with matching canonicals and language links', async () => {
+        const app = createTestApp({ forceHttps: true });
+        const origin = 'https://example.com';
+        const sitemap = await (await app.request(`${origin}/sitemap.xml`)).text();
+        const urls = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map(match => match[1]);
+        expect(urls).toHaveLength(4);
+        for (const url of urls) {
+            const response = await app.request(url, { headers: { 'Accept-Language': 'ru' } });
+            expect(response.status).toBe(200);
+            const html = await response.text();
+            expect(html).toContain(`<link rel="canonical" href="${url}" />`);
+            expect(html).not.toContain('?lang=zh-CN');
+            for (const alternate of urls) {
+                expect(html).toContain(`href="${alternate}"`);
+                expect(html).toContain(`href="${new URL(alternate).pathname}${new URL(alternate).search}"`);
+            }
+        }
+        const robots = await (await app.request(`${origin}/robots.txt`)).text();
+        expect(robots).toContain(`Sitemap: ${origin}/sitemap.xml`);
+    });
+});
+
+describe('SEO: server-rendered usage guide', () => {
+    it.each([
+        ['zh-CN', '订阅转换怎么用', '常见问题'],
+        ['en-US', 'How to convert a subscription', 'Frequently asked questions'],
+        ['fa', 'روش تبدیل اشتراک', 'پرسش‌های متداول'],
+        ['ru', 'Как преобразовать подписку', 'Частые вопросы']
+    ])('includes localized instructions and answers in the initial HTML for %s', async (lang, steps, faq) => {
+        const html = await fetchHome(lang);
+        const guide = html.match(/<article id="guide"[\s\S]*?<\/article>/)?.[0];
+        expect(guide).toBeDefined();
+        expect(guide).toContain(steps);
+        expect(guide).toContain(faq);
+        expect(guide).toContain('node.example.com');
+        expect(guide.match(/<details\b/g)).toHaveLength(5);
+        expect(guide).not.toContain('x-show');
     });
 });

@@ -6,12 +6,14 @@ import { Navbar } from '../components/Navbar.jsx';
 import { Form } from '../components/Form.jsx';
 import { Footer } from '../components/Footer.jsx';
 import { UpdateChecker } from '../components/UpdateChecker.jsx';
+import { HomeGuide } from '../components/HomeGuide.jsx';
 import { SingboxConfigBuilder } from '../builders/SingboxConfigBuilder.js';
 import { ClashConfigBuilder } from '../builders/ClashConfigBuilder.js';
 import { SurgeConfigBuilder } from '../builders/SurgeConfigBuilder.js';
 import { BaseConfigBuilder } from '../builders/BaseConfigBuilder.js';
 import { proxyToShareLink } from '../parsers/proxyToShareLink.js';
 import { createTranslator, resolveLanguage } from '../i18n/index.js';
+import { DEFAULT_LANG, SUPPORTED_LANGS, X_DEFAULT_LANG, homePath } from '../i18n/languages.js';
 import { encodeBase64, tryDecodeSubscriptionLines, isInvalidNodeName } from '../utils.js';
 import { APP_NAME, APP_SUBTITLE, APP_VERSION, GITHUB_REPO } from '../constants.js';
 import { ShortLinkService } from '../services/shortLinkService.js';
@@ -20,21 +22,10 @@ import { InputLogService } from '../services/inputLogService.js';
 import { ServiceError, MissingDependencyError } from '../services/errors.js';
 import { normalizeRuntime } from '../runtime/runtimeConfig.js';
 import { registerGeneralSettingsAccess } from './generalSettingsAccess.js';
+import { canonicalRedirect } from './canonicalUrls.js';
 import { PREDEFINED_RULE_SETS, SING_BOX_CONFIG, SING_BOX_CONFIG_V1_11, generateSubconverterConfig } from '../config/index.js';
 
 const DEFAULT_USER_AGENT = 'curl/7.74.0';
-
-// Single source of truth for hreflang / og:locale / canonical query params.
-// Order matters: first entry is the default locale used when no ?lang= is supplied.
-const SUPPORTED_LANGS = [
-    { code: 'zh-CN', hreflang: 'zh-CN', ogLocale: 'zh_CN' },
-    { code: 'en-US', hreflang: 'en', ogLocale: 'en_US' },
-    { code: 'fa', hreflang: 'fa', ogLocale: 'fa_IR' },
-    { code: 'ru', hreflang: 'ru', ogLocale: 'ru_RU' }
-];
-const DEFAULT_LANG = SUPPORTED_LANGS[0].code;
-// English is the international fallback for unmatched locales (Google x-default convention).
-const X_DEFAULT_LANG = 'en-US';
 
 // Backend / API routes that must not be indexed. Keep in sync with robots.txt.
 const NON_INDEXABLE_PATHS = [
@@ -55,7 +46,7 @@ const NON_INDEXABLE_PATHS = [
 ];
 
 function buildLangUrl(origin, langCode) {
-    return `${origin}/?lang=${langCode}`;
+    return `${origin}${homePath(langCode)}`;
 }
 
 function buildAlternates(origin) {
@@ -110,11 +101,19 @@ export function createApp(bindings = {}) {
     };
 
     const app = new Hono();
+    app.use('*', async (c, next) => {
+        if (c.req.method === 'GET' || c.req.method === 'HEAD') {
+            const redirect = canonicalRedirect(c.req.url, runtime.config.forceHttps);
+            if (redirect) return c.redirect(redirect, 308);
+        }
+        await next();
+    });
     const generalSettingsAccess = registerGeneralSettingsAccess(app, runtime.config.generalSettingsPassword);
 
     app.use('*', async (c, next) => {
         const acceptLanguage = getRequestHeader(c.req, 'Accept-Language');
-        const lang = c.req.query('lang') || acceptLanguage?.split(',')[0] || 'zh-CN';
+        // A public page must have the same language and canonical URL for every visitor.
+        const lang = c.req.query('lang') || (c.req.path === '/' ? DEFAULT_LANG : acceptLanguage?.split(',')[0]) || DEFAULT_LANG;
         c.set('lang', lang);
         c.set('t', createTranslator(lang));
         await next();
@@ -134,14 +133,14 @@ export function createApp(bindings = {}) {
                 lang={lang}
                 canonicalUrl={seo.canonicalUrl}
                 alternates={seo.alternates}
-                ogTitle={t('ogTitle')}
-                ogDescription={t('ogDescription')}
+                ogTitle={t('pageTitle')}
+                ogDescription={t('pageDescription')}
                 ogLocale={seo.ogLocale}
                 ogSiteName={seo.ogSiteName}
                 jsonLd={seo.jsonLd}
             >
                 <div class="flex flex-col min-h-screen">
-                    <Navbar lang={lang} />
+                    <Navbar lang={lang} guideLabel={t('homeGuide.toggleLabel')} />
                     <main class="flex-1">
                         <div class="container mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-8">
                             <div class="max-w-5xl mx-auto">
@@ -161,6 +160,9 @@ export function createApp(bindings = {}) {
                                     </p>
                                 </div>
                                 <Form t={t} lang={lang} generalSettingsProtected={generalSettingsAccess.enabled} />
+                                <div id="guide-panel" x-show="guideOpen" x-cloak>
+                                    <HomeGuide t={t} />
+                                </div>
                             </div>
                         </div>
                     </main>

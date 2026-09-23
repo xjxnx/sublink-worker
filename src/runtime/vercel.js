@@ -13,6 +13,7 @@ export function createVercelRuntime(env = process.env) {
         assetFetcher: createFileAssetFetcher('public'),
         logger: console,
         config: {
+            forceHttps: env.FORCE_HTTPS !== 'false',
             configTtlSeconds: undefined,
             shortLinkTtlSeconds: null,
             inputLogTtlSeconds: parseNumber(env.INPUT_LOG_TTL_SECONDS) || null,

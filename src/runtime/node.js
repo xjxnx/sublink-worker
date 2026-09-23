@@ -13,6 +13,7 @@ export function createNodeRuntime(env = process.env) {
         assetFetcher: createFileAssetFetcher(env.STATIC_DIR || 'public'),
         logger: console,
         config: {
+            forceHttps: env.FORCE_HTTPS === 'true',
             configTtlSeconds: parseNumber(env.CONFIG_TTL_SECONDS) || undefined,
             shortLinkTtlSeconds: parseNumber(env.SHORT_LINK_TTL_SECONDS) || null,
             inputLogTtlSeconds: parseNumber(env.INPUT_LOG_TTL_SECONDS) || null,
