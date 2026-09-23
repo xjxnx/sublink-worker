@@ -19,6 +19,10 @@ export const Footer = () => {
                             </span>
                         </div>
 
+                        <span class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap sm:ms-8 sm:me-auto" dir="ltr">
+                            vx：bin3abc
+                        </span>
+
                         <div class="flex items-center gap-1">
                             <span
                                 class="p-2 rounded-lg text-gray-500 dark:text-gray-400"
