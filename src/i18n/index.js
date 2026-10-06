@@ -1,4 +1,3 @@
-import { APP_NAME } from '../constants.js';
 import { homeGuideTranslations } from './homeGuide.js';
 import { checkStartsWith } from "../utils.js";
 
@@ -26,9 +25,10 @@ export const translations = {
     invalidFormat: '无效格式：',
     defaultRules: ['广告拦截', '谷歌服务', '国外媒体', '电报消息'],
     configValidationError: '配置验证错误：',
-    pageDescription: '在线转换 Clash、Sing-Box、Surge 与 Xray/V2Ray 订阅。支持合并订阅地址、节点链接，导入 Clash YAML、Sing-Box JSON 和 Surge INI，选择分流规则并生成短链接。',
+    pageDescription: '在线订阅转换工具，粘贴订阅链接或节点配置，生成 Clash/Mihomo、Sing-Box、Surge、Xray/V2Ray 订阅。支持多个订阅合并、Clash 转 Sing-Box、自定义分流规则与短链接。',
     pageKeywords: '订阅链接,转换,Xray,SingBox,Clash,Surge',
-    pageTitle: `${APP_NAME} - Sing-Box、Surge、V2Ray 在线转换`,
+    pageTitle: '在线订阅转换工具 - Clash/Mihomo、Sing-Box、Surge、V2Ray',
+    homeHeadline: '在线订阅转换工具',
     shareUrls: '输入源',
     urlPlaceholder: '支持粘贴：分享链接、Clash 配置、Sing-Box 配置、Surge 配置...',
     advancedOptions: '高级选项',
@@ -207,6 +207,7 @@ export const translations = {
     pageDescription: 'Convert and merge subscriptions for Clash, Sing-Box, Surge and Xray/V2Ray. Import node links or YAML, JSON and INI configurations, choose routing rules and generate short links.',
     pageKeywords: 'subscription link,converter,Xray,SingBox,Clash,Surge',
     pageTitle: 'Subscription Link Converter for Clash, Sing-Box & Surge',
+    homeHeadline: 'Online Subscription Converter',
     shareUrls: 'Input Source',
     urlPlaceholder: 'Paste share links, Clash config, Sing-Box config, or Surge config...',
     advancedOptions: 'Advanced Options',
@@ -375,6 +376,7 @@ export const translations = {
     pageDescription: 'تبدیل و ادغام اشتراک برای Clash، Sing-Box، Surge و Xray/V2Ray. وارد کردن لینک نود و پیکربندی YAML، JSON یا INI، انتخاب قوانین مسیریابی و ساخت لینک کوتاه.',
     pageKeywords: 'لینک اشتراک,مبدل,Xray,SingBox,Clash,Surge',
     pageTitle: 'مبدل اشتراک Clash، Sing-Box و Surge',
+    homeHeadline: 'مبدل آنلاین اشتراک',
     shareUrls: 'منبع ورودی',
     urlPlaceholder: 'لینک‌های اشتراک، پیکربندی Clash، Sing-Box یا Surge را جایگذاری کنید...',
     advancedOptions: 'گزینه‌های پیشرفته',
@@ -543,6 +545,7 @@ export const translations = {
     pageDescription: 'Конвертация и объединение подписок для Clash, Sing-Box, Surge и Xray/V2Ray. Импорт ссылок, YAML, JSON и INI, выбор правил маршрутизации и создание коротких ссылок.',
     pageKeywords: 'ссылка подписки,преобразование,Xray,SingBox,Clash,Surge',
     pageTitle: 'Конвертер подписок Clash, Sing-Box и Surge',
+    homeHeadline: 'Онлайн-конвертер подписок',
     shareUrls: 'Источник ввода',
     urlPlaceholder: 'Вставьте ссылки, конфигурацию Clash, Sing-Box или Surge...',
     advancedOptions: 'Расширенные настройки',

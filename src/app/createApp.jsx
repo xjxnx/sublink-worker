@@ -6,6 +6,8 @@ import { Navbar } from '../components/Navbar.jsx';
 import { Form } from '../components/Form.jsx';
 import { Footer } from '../components/Footer.jsx';
 import { HomeGuide } from '../components/HomeGuide.jsx';
+import { ConversionOverview, ConversionGuidePage } from '../components/ConversionGuides.jsx';
+import { CONVERSION_GUIDES } from '../content/conversionGuides.js';
 import { SingboxConfigBuilder } from '../builders/SingboxConfigBuilder.js';
 import { ClashConfigBuilder } from '../builders/ClashConfigBuilder.js';
 import { SurgeConfigBuilder } from '../builders/SurgeConfigBuilder.js';
@@ -66,7 +68,7 @@ function buildHomeSeo(c, lang, t) {
     const canonicalUrl = buildLangUrl(origin, lang);
     const alternates = buildAlternates(origin);
     const langEntry = SUPPORTED_LANGS.find((entry) => entry.code === lang) || SUPPORTED_LANGS[0];
-    const jsonLd = {
+    const applicationSchema = {
         '@context': 'https://schema.org',
         '@type': 'WebApplication',
         name: APP_NAME,
@@ -80,6 +82,14 @@ function buildHomeSeo(c, lang, t) {
         softwareVersion: APP_VERSION,
         license: 'https://opensource.org/licenses/MIT',
         sameAs: [GITHUB_REPO]
+    };
+    const jsonLd = {
+        '@context': 'https://schema.org',
+        '@graph': [
+            { '@type': 'WebSite', '@id': `${origin}/#website`, url: `${origin}/`, name: APP_NAME, alternateName: ['在线订阅转换工具', 'Sublink Worker'], inLanguage: SUPPORTED_LANGS.map(entry => entry.hreflang) },
+            { ...applicationSchema, '@id': `${origin}/#application` },
+            { '@type': 'WebPage', '@id': canonicalUrl, url: canonicalUrl, name: t('pageTitle'), description: t('pageDescription'), inLanguage: lang, isPartOf: { '@id': `${origin}/#website` }, about: { '@id': `${origin}/#application` } }
+        ]
     };
     return {
         canonicalUrl,
@@ -152,13 +162,14 @@ export function createApp(bindings = {}) {
                                         SingBox · Clash · Xray · Surge
                                     </div>
                                     <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 tracking-tight">
-                                        <span class="text-gradient">{APP_NAME}</span>
+                                        <span class="text-gradient">{t('homeHeadline')}</span>
                                     </h1>
                                     <p class="text-base sm:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
                                         {subtitle}
                                     </p>
                                 </div>
                                 <Form t={t} lang={lang} generalSettingsProtected={generalSettingsAccess.enabled} />
+                                <ConversionOverview t={t} lang={lang} />
                                 <div id="guide-panel" x-show="guideOpen" x-cloak>
                                     <HomeGuide t={t} />
                                 </div>
@@ -170,6 +181,11 @@ export function createApp(bindings = {}) {
             </Layout>
         );
     });
+
+    // Guides have one Chinese URL; request headers must not change the indexed document.
+    for (const guide of CONVERSION_GUIDES) {
+        app.get(guide.path, (c) => c.html(<ConversionGuidePage guide={guide} origin={new URL(c.req.url).origin} />));
+    }
 
     app.get('/robots.txt', (c) => {
         const origin = new URL(c.req.url).origin;
@@ -203,12 +219,17 @@ export function createApp(bindings = {}) {
                 '    <priority>1.0</priority>',
                 '  </url>'
             ].join('\n');
-        }).join('\n');
+        });
+        const guideEntries = CONVERSION_GUIDES.map(guide => [
+            '  <url>',
+            `    <loc>${origin}${guide.path}</loc>`,
+            '  </url>'
+        ].join('\n'));
         const xml = [
             '<?xml version="1.0" encoding="UTF-8"?>',
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"',
             '        xmlns:xhtml="http://www.w3.org/1999/xhtml">',
-            urlEntries,
+            [...urlEntries, ...guideEntries].join('\n'),
             '</urlset>',
             ''
         ].join('\n');

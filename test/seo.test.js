@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createApp } from '../src/app/createApp.jsx';
 import { MemoryKVAdapter } from '../src/adapters/kv/memoryKv.js';
 import { createCloudflareRuntime } from '../src/runtime/cloudflare.js';
+import { CONVERSION_GUIDES } from '../src/content/conversionGuides.js';
 
 const ORIGIN = 'http://localhost';
 
@@ -45,7 +46,7 @@ describe('SEO: <html> lang/dir', () => {
 describe('SEO: meta description / keywords are localized', () => {
     it('zh-CN page emits Chinese description (not the previous hardcoded English string)', async () => {
         const html = await fetchHome('zh-CN');
-        expect(html).toContain('<meta name="description" content="在线转换 Clash、Sing-Box、Surge 与 Xray/V2Ray 订阅。');
+        expect(html).toContain('<meta name="description" content="在线订阅转换工具，粘贴订阅链接或节点配置，');
         expect(html).not.toContain('Convert and optimize your subscription links easily');
     });
 
@@ -92,7 +93,7 @@ describe('SEO: Open Graph + Twitter Card', () => {
     it('emits og:title / og:description / og:url / og:locale', async () => {
         const html = await fetchHome('zh-CN');
         expect(html).toMatch(/<meta property="og:type" content="website"/);
-        expect(html).toMatch(/<meta property="og:title" content="[^"]+在线转换"/);
+        expect(html).toContain('<meta property="og:title" content="在线订阅转换工具 - Clash/Mihomo、Sing-Box、Surge、V2Ray"');
         expect(html).toContain(`<meta property="og:url" content="${ORIGIN}/"`);
         expect(html).toMatch(/<meta property="og:locale" content="zh_CN"/);
     });
@@ -120,11 +121,15 @@ describe('SEO: structured data', () => {
             .replace(/\\u003c/g, '<')
             .replace(/\\u003e/g, '>')
             .replace(/\\u0026/g, '&'));
-        expect(parsed['@type']).toBe('WebApplication');
-        expect(parsed.applicationCategory).toBe('UtilityApplication');
-        expect(parsed.url).toBe(`${ORIGIN}/`);
-        expect(parsed.offers).toMatchObject({ '@type': 'Offer', price: '0' });
-        expect(Array.isArray(parsed.inLanguage)).toBe(true);
+        const application = parsed['@graph'].find(item => item['@type'] === 'WebApplication');
+        expect(application.applicationCategory).toBe('UtilityApplication');
+        expect(application.url).toBe(`${ORIGIN}/`);
+        expect(application.offers).toMatchObject({ '@type': 'Offer', price: '0' });
+        expect(Array.isArray(application.inLanguage)).toBe(true);
+        expect(parsed['@graph'].find(item => item['@type'] === 'WebSite').url).toBe(`${ORIGIN}/`);
+        const page = parsed['@graph'].find(item => item['@type'] === 'WebPage');
+        expect(page.url).toBe(`${ORIGIN}/?lang=en-US`);
+        expect(page.inLanguage).toBe('en-US');
     });
 });
 
@@ -176,15 +181,18 @@ describe('SEO: /sitemap.xml route', () => {
             expect(xml).toContain(`<loc>${ORIGIN}/?lang=${code}</loc>`);
         }
 
-        // Each <url> must include the full hreflang block (4 langs + x-default = 5)
+        // Chinese-only guides must not claim translations that do not exist.
         const urlBlocks = xml.match(/<url>[\s\S]*?<\/url>/g) || [];
-        expect(urlBlocks).toHaveLength(4);
-        for (const block of urlBlocks) {
+        expect(urlBlocks).toHaveLength(6);
+        for (const block of urlBlocks.slice(0, 4)) {
             expect(block).toContain('hreflang="zh-CN"');
             expect(block).toContain('hreflang="en"');
             expect(block).toContain('hreflang="fa"');
             expect(block).toContain('hreflang="ru"');
             expect(block).toContain('hreflang="x-default"');
+        }
+        for (const block of urlBlocks.slice(4)) {
+            expect(block).not.toContain('hreflang');
         }
     });
 });
@@ -264,20 +272,70 @@ describe('SEO: stable public URLs', () => {
         const origin = 'https://example.com';
         const sitemap = await (await app.request(`${origin}/sitemap.xml`)).text();
         const urls = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map(match => match[1]);
-        expect(urls).toHaveLength(4);
+        expect(urls).toHaveLength(6);
         for (const url of urls) {
             const response = await app.request(url, { headers: { 'Accept-Language': 'ru' } });
             expect(response.status).toBe(200);
             const html = await response.text();
             expect(html).toContain(`<link rel="canonical" href="${url}" />`);
             expect(html).not.toContain('?lang=zh-CN');
-            for (const alternate of urls) {
-                expect(html).toContain(`href="${alternate}"`);
-                expect(html).toContain(`href="${new URL(alternate).pathname}${new URL(alternate).search}"`);
+            if (new URL(url).pathname === '/') {
+                for (const alternate of urls.slice(0, 4)) {
+                    expect(html).toContain(`href="${alternate}"`);
+                    expect(html).toContain(`href="${new URL(alternate).pathname}${new URL(alternate).search}"`);
+                }
+            } else {
+                expect(html).toMatch(/<html\s+lang="zh-CN"/);
+                expect(html).not.toContain('rel="alternate"');
             }
         }
         const robots = await (await app.request(`${origin}/robots.txt`)).text();
         expect(robots).toContain(`Sitemap: ${origin}/sitemap.xml`);
+    });
+});
+
+describe('SEO: visible overview and conversion guides', () => {
+    it('links to guides from a visible server-rendered homepage section', async () => {
+        const html = await fetchHome();
+        const overview = html.split('<section id="conversion-overview"')[1].split('<div id="guide-panel"')[0];
+        expect(overview).not.toContain('x-show');
+        expect(overview).not.toContain('x-cloak');
+        for (const guide of CONVERSION_GUIDES) {
+            expect(overview).toContain(`href="${guide.path}"`);
+        }
+        expect(html).toMatch(/<h1\b[^>]*><span[^>]*>在线订阅转换工具<\/span><\/h1>/);
+    });
+
+    it.each(CONVERSION_GUIDES)('serves $path with matching canonical, content and breadcrumbs', async (guide) => {
+        const response = await createTestApp().request(`${ORIGIN}${guide.path}`, { headers: { 'Accept-Language': 'fa' } });
+        expect(response.status).toBe(200);
+        expect(response.headers.get('X-Robots-Tag')).toBeNull();
+        const html = await response.text();
+        expect(html).toMatch(/<html\s+lang="zh-CN"\s+dir="ltr"/);
+        expect(html).toContain(`<link rel="canonical" href="${ORIGIN}${guide.path}"`);
+        expect(html).toContain(guide.intro);
+        expect(html).toContain('href="/#input"');
+        expect(html).not.toContain('x-on:click="toggleGuide()"');
+        for (const related of CONVERSION_GUIDES.filter(item => item.path !== guide.path)) {
+            expect(html).toContain(`href="${related.path}"`);
+        }
+        const schema = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]+?)<\/script>/)[1]);
+        const page = schema['@graph'].find(item => item['@type'] === 'WebPage');
+        expect(page.url).toBe(`${ORIGIN}${guide.path}`);
+        const breadcrumbs = schema['@graph'].find(item => item['@type'] === 'BreadcrumbList');
+        expect(breadcrumbs.itemListElement.at(-1).item).toBe(page.url);
+    });
+
+    it.each(CONVERSION_GUIDES)('normalizes HTTPS, trailing slash and language parameters for $path in one hop', async (guide) => {
+        const app = createTestApp({ forceHttps: true });
+        const response = await app.request(`http://example.com${guide.path}/?lang=ru&utm_source=docs`);
+        expect(response.status).toBe(308);
+        expect(response.headers.get('location')).toBe(`https://example.com${guide.path}?utm_source=docs`);
+        expect((await app.request(response.headers.get('location'))).status).toBe(200);
+    });
+
+    it('returns 404 for unknown guides', async () => {
+        expect((await createTestApp().request(`${ORIGIN}/guides/unknown`)).status).toBe(404);
     });
 });
 

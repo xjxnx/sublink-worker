@@ -4,7 +4,7 @@ import { APP_NAME } from '../constants.js';
 import { SUPPORTED_LANGS as LANGUAGES, homePath } from '../i18n/languages.js';
 
 export const Navbar = (props) => {
-    const { lang = 'zh-CN', guideLabel = '使用说明' } = props || {};
+    const { lang = 'zh-CN', guideLabel = '使用说明', guideHref } = props || {};
     const current = LANGUAGES.find((item) => item.code === lang) || LANGUAGES[0];
 
     return (
@@ -12,7 +12,7 @@ export const Navbar = (props) => {
             <div class="glass-strong rounded-2xl shadow-soft">
                 <div class="flex items-center justify-between h-14 px-4 sm:px-6">
                     <a href={homePath(current.code)} class="group flex items-center gap-2.5 font-bold text-gray-900 dark:text-white transition-colors">
-                        <span class="relative flex items-center justify-center w-9 h-9 group-hover:scale-105 transition-transform duration-300">
+                        <span class="relative flex shrink-0 items-center justify-center w-9 h-9 group-hover:scale-105 transition-transform duration-300">
                             <svg viewBox="0 0 64 64" fill="none" class="w-9 h-9 drop-shadow-[0_2px_6px_rgba(37,99,235,0.5)]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label={`${APP_NAME} logo`}>
                                 <defs>
                                     <linearGradient id="navShield" x1="12" y1="8" x2="52" y2="58" gradientUnits="userSpaceOnUse">
@@ -42,11 +42,19 @@ export const Navbar = (props) => {
                                 <path d="M40 24 C38 20 30 19 26 22 C22 25 24 29 30 31 C36 33 42 35 40 41 C38 46 29 46 24 43" fill="none" stroke="#ffffff" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#navSGlow)" />
                             </svg>
                         </span>
-                        <span class="text-base sm:text-lg tracking-tight group-hover:text-gradient transition-all">{APP_NAME}</span>
+                        <span class="text-base sm:text-lg tracking-tight group-hover:text-gradient transition-all whitespace-nowrap">
+                            <span class="hidden sm:inline">{APP_NAME}</span>
+                            <span class="sm:hidden">订阅转换</span>
+                        </span>
                     </a>
 
                     <div class="flex items-center gap-1.5 sm:gap-2">
-                        <button
+                        {guideHref ? (
+                            <a href={guideHref} aria-label={guideLabel} title={guideLabel} class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-medium rounded-xl text-primary-700 dark:text-primary-300 whitespace-nowrap">
+                                <i class="fas fa-link text-xs sm:hidden" aria-hidden="true"></i>
+                                <span class="hidden sm:inline">{guideLabel}</span>
+                            </a>
+                        ) : <button
                             id="guide-toggle"
                             type="button"
                             x-on:click="toggleGuide()"
@@ -59,7 +67,7 @@ export const Navbar = (props) => {
                         >
                             <i class="fas fa-book-open text-xs" aria-hidden="true"></i>
                             <span class="hidden sm:inline">{guideLabel}</span>
-                        </button>
+                        </button>}
                         {/* Language switcher */}
                         <div x-data="{ open: false }" class="relative">
                             <button
@@ -120,12 +128,6 @@ export const Navbar = (props) => {
                         >
                             <i class="fab fa-github text-base"></i>
                             <span>GitHub</span>
-                        </span>
-                        <span
-                            class="sm:hidden p-2.5 rounded-xl text-gray-600 dark:text-gray-300"
-                            aria-label="GitHub"
-                        >
-                            <i class="fab fa-github"></i>
                         </span>
                         <button
                             class="relative p-2.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100/80 dark:hover:bg-gray-800/60 transition-all duration-300 cursor-pointer"

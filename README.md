@@ -72,7 +72,9 @@ Cloudflare Workers 和 Vercel 默认将首页、`/robots.txt`、`/sitemap.xml` �
 
 这项跳转只处理公开页面；订阅和管理接口的既有地址、签名不会被改写。静态资源的全站 HTTPS 跳转可由 Cloudflare 或反向代理统一配置。
 
-部署后，在 Google Search Console 提交 `https://你的域名/sitemap.xml`。地图包含中文首页与三个语言版本，网址与页面 canonical、hreflang、导航链接一致。如果仍显示“无法抓取”，检查具体抓取错误和 Cloudflare 安全事件；本地或普通浏览器访问成功不等于 Google 抓取成功。站点地图可帮助发现页面，不保证收录或排名。
+首页提供常显的格式说明与教程入口，详细使用说明仍可展开查看。中文教程分别位于 `/guides/clash-to-singbox`（Clash 转 Sing-Box）和 `/guides/merge-subscriptions`（合并多个订阅），以服务端 HTML 输出正文，并包含独立标题、描述、canonical 和面包屑结构化数据。教程内容固定为中文，不随浏览器语言变化；教程地址的尾斜杠和语言参数会规范化到同一个网址。
+
+部署后，在 Google Search Console 提交 `https://你的域名/sitemap.xml`。地图包含中文首页、三个语言版本与两篇中文教程；首页语言版本的 canonical、hreflang、导航链接一致，教程仅使用自身的 canonical。发布后可通过“网址检查”检查首页与教程，并在需要时请求编入索引。如果仍显示“无法抓取”，检查具体抓取错误和 Cloudflare 安全事件；本地或普通浏览器访问成功不等于 Google 抓取成功。站点地图可帮助发现页面，不保证收录或排名，搜索标题与摘要也可能由 Google 重写。
 
 ## 通用设置密码保护
 
