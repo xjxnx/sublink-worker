@@ -87,6 +87,11 @@ export const UNIFIED_RULES = [
 		ip_rules: []
 	},
 	{
+		name: 'Cryptocurrency',
+		site_rules: ['okx', 'binance', 'gateio', 'kraken'],
+		ip_rules: []
+	},
+	{
 		name: 'Cloud Services',
 		site_rules: ['aws', 'azure', 'digitalocean', 'heroku', 'dropbox'],
 		ip_rules: []
