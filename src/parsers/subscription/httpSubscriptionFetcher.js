@@ -1,5 +1,5 @@
 import { decodeBase64 } from '../../utils.js';
-import { parseSubscriptionContent } from './subscriptionContentParser.js';
+import { parseClashYaml, parseSubscriptionContent } from './subscriptionContentParser.js';
 
 const SUBSCRIPTION_URI_PATTERN = /^(ss|vmess|vless|hysteria|hysteria2|hy2|trojan|tuic|anytls|http|https):\/\//i;
 
@@ -21,17 +21,19 @@ function isPlainSubscriptionContent(content) {
     }
     return detectFormat(content) !== 'unknown' ||
         hasSubscriptionUriLine(content) ||
-        isLikelyTomlConfig(content);
+        isLikelyTomlConfig(content) ||
+        parseClashYaml(content) !== null;
 }
 
 function decodeUriComponentIfNeeded(text) {
-    const trimmed = text.trim();
+    // Leading whitespace belongs to YAML structure, including decoded node lists.
+    const trimmed = text.trimEnd();
     if (!trimmed.includes('%')) {
         return trimmed;
     }
 
     try {
-        return decodeURIComponent(trimmed).trim();
+        return decodeURIComponent(trimmed).trimEnd();
     } catch (urlError) {
         console.warn('Failed to URL decode the text:', urlError);
         return trimmed;

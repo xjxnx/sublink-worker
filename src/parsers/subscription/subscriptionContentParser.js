@@ -118,12 +118,13 @@ function parseInterval(interval) {
 export function parseClashYaml(content) {
     try {
         const parsed = yaml.load(content);
-        if (parsed && typeof parsed === 'object' && Array.isArray(parsed.proxies)) {
-            const proxies = parsed.proxies
+        const proxyList = Array.isArray(parsed) ? parsed : parsed?.proxies;
+        if (Array.isArray(proxyList)) {
+            const proxies = proxyList
                 .map(p => convertYamlProxyToObject(p))
                 .filter(p => p != null);
             if (proxies.length > 0) {
-                const configOverrides = deepCopy(parsed);
+                const configOverrides = Array.isArray(parsed) ? {} : deepCopy(parsed);
                 delete configOverrides.proxies;
                 return {
                     type: 'yamlConfig',
@@ -133,7 +134,7 @@ export function parseClashYaml(content) {
             }
         }
     } catch (e) {
-        // Not valid YAML or doesn't have proxies array
+        // Invalid YAML must remain eligible for the other subscription formats.
     }
     return null;
 }
@@ -267,7 +268,8 @@ export function parseSubscriptionContent(content) {
     }
 
     // Try Clash YAML
-    const clashResult = parseClashYaml(trimmed);
+    // Trimming the first line alone would invalidate indented YAML lists.
+    const clashResult = parseClashYaml(content);
     if (clashResult) {
         return clashResult;
     }
