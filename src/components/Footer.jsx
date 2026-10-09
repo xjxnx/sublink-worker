@@ -19,18 +19,18 @@ export const Footer = () => {
                             </span>
                         </div>
 
-                        <a
-                            href="https://t.me/+8nOAvXGP4HY4ZGI0"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300 whitespace-nowrap sm:ms-8 sm:me-auto"
-                            dir="ltr"
-                        >
-                            <i class="fab fa-telegram text-base" aria-hidden="true"></i>
-                            <span>Telegram 交流群</span>
-                        </a>
+                        <div class="flex items-center gap-3 self-end sm:self-auto">
+                            <a
+                                href="https://t.me/+8nOAvXGP4HY4ZGI0"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300 whitespace-nowrap"
+                                dir="ltr"
+                            >
+                                <i class="fab fa-telegram text-base" aria-hidden="true"></i>
+                                <span>Telegram 交流群</span>
+                            </a>
 
-                        <div class="flex items-center gap-1">
                             <span
                                 class="p-2 rounded-lg text-gray-500 dark:text-gray-400"
                                 aria-label="GitHub"
