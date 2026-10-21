@@ -500,18 +500,12 @@ export const Form = (props) => {
                       type="button"
                       data-label={t(field.labelKey)}
                       x-on:click={`showQRCode('${field.key}', $el.dataset.label)`}
-                      class="shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-lg border border-gray-200/60 bg-white overflow-hidden flex items-center justify-center text-gray-500 hover:border-primary-400 transition-colors cursor-zoom-in"
-                      title={t('enlargeQRCode')}
-                      aria-label={`${t(field.labelKey)}: ${t('enlargeQRCode')}`}
+                      class="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/30 dark:hover:text-primary-400 transition-colors cursor-pointer"
+                      title={t('showQRCode')}
+                      aria-label={`${t(field.labelKey)}: ${t('showQRCode')}`}
                       aria-haspopup="dialog"
                     >
-                      <img
-                        x-show={`qrCodes.${field.key}?.src`}
-                        x-bind:src={`qrCodes.${field.key}?.src || null`}
-                        alt={t('scanQRCode')}
-                        class="w-full h-full"
-                      />
-                      <i x-show={`!qrCodes.${field.key}?.src`} class="fas fa-qrcode" aria-hidden="true"></i>
+                      <i class="fas fa-qrcode" aria-hidden="true"></i>
                     </button>
                   </div>
                 </div>
@@ -572,13 +566,13 @@ export const Form = (props) => {
           </button>
         </div>
         <img
-          x-show="qrCodes[qrCodeKey]?.src"
-          x-bind:src="qrCodes[qrCodeKey]?.src || null"
+          x-show="qrCode.src"
+          x-bind:src="qrCode.src || null"
           alt={t('scanQRCode')}
           class="w-full bg-white rounded-lg"
         />
-        <p x-show="qrCodes[qrCodeKey]?.error" x-text="qrCodes[qrCodeKey]?.error" class="text-sm text-amber-600 dark:text-amber-400 py-8 text-center" role="status"></p>
-        <p x-show="qrCodes[qrCodeKey]?.src" class="text-sm text-center text-gray-500 dark:text-gray-400 mt-4">{t('scanQRCode')}</p>
+        <p x-show="qrCode.error" x-text="qrCode.error" class="text-sm text-amber-600 dark:text-amber-400 py-8 text-center" role="status"></p>
+        <p x-show="qrCode.src" class="text-sm text-center text-gray-500 dark:text-gray-400 mt-4">{t('scanQRCode')}</p>
       </dialog>
 
       <script dangerouslySetInnerHTML={{ __html: scriptContent }} />
