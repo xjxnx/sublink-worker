@@ -1,15 +1,16 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource hono/jsx */
 import { APP_NAME, APP_VERSION } from '../constants.js';
+import { createTranslator } from '../i18n/index.js';
 
-export const Footer = () => {
+export const Footer = ({ t = createTranslator('zh-CN') }) => {
     const currentYear = new Date().getFullYear();
 
     return (
         <footer class="mt-16 pb-8">
             <div class="container mx-auto px-4">
                 <div class="glass rounded-2xl px-5 py-4 max-w-3xl mx-auto">
-                    <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div class="flex flex-col sm:flex-row flex-wrap items-center justify-between gap-3">
                         <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
                             <span>© {currentYear} {APP_NAME}</span>
                             <span
@@ -19,7 +20,17 @@ export const Footer = () => {
                             </span>
                         </div>
 
-                        <div class="flex items-center gap-3 self-end sm:self-auto">
+                        <div class="flex flex-wrap items-center justify-center gap-3 max-w-full">
+                            <a
+                                href="https://www.paypal.com/ncp/payment/ZD9FZ84DDQ4TN"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="inline-flex items-center gap-2 rounded-full border border-primary-200 bg-primary-50 px-3 py-1.5 text-sm font-medium text-primary-700 hover:bg-primary-100 dark:border-primary-400/20 dark:bg-primary-400/10 dark:text-primary-300 dark:hover:bg-primary-400/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 whitespace-nowrap"
+                            >
+                                <i class="fab fa-paypal text-base" aria-hidden="true"></i>
+                                <span>{t('footerDonate')}</span>
+                            </a>
+
                             <a
                                 href="https://t.me/+8nOAvXGP4HY4ZGI0"
                                 target="_blank"

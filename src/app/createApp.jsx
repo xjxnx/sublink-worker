@@ -176,7 +176,7 @@ export function createApp(bindings = {}) {
                             </div>
                         </div>
                     </main>
-                    <Footer />
+                    <Footer t={t} />
                 </div>
             </Layout>
         );

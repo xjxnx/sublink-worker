@@ -5,6 +5,7 @@ import { checkStartsWith } from "../utils.js";
 export const translations = {
   'zh-CN': {
     homeGuide: homeGuideTranslations['zh-CN'],
+    footerDonate: 'PayPal 打赏',
     enableClashUI: '启用 Clash API',
     enableClashUITip: '在 SingBox 配置中启用 Clash API (支持 Dashboard 面板)，默认端口 9090',
     externalController: '外部控制端口',
@@ -188,6 +189,7 @@ export const translations = {
   },
   'en-US': {
     homeGuide: homeGuideTranslations['en-US'],
+    footerDonate: 'Donate via PayPal',
     enableClashUI: 'Enable Clash API',
     enableClashUITip: 'Enable Clash API in SingBox config (Support Dashboard), default port 9090',
     externalController: 'External Controller',
@@ -370,6 +372,7 @@ export const translations = {
   },
   'fa': {
     homeGuide: homeGuideTranslations.fa,
+    footerDonate: 'حمایت با PayPal',
     missingInput: 'پارامتر ورودی وجود ندارد',
     missingConfig: 'پارامتر پیکربندی وجود ندارد',
     missingUrl: 'پارامتر URL وجود ندارد',
@@ -543,6 +546,7 @@ export const translations = {
   },
   'ru': {
     homeGuide: homeGuideTranslations.ru,
+    footerDonate: 'Поддержать через PayPal',
     missingInput: 'Отсутствует входной параметр',
     missingConfig: 'Отсутствует параметр конфигурации',
     missingUrl: 'Отсутствует параметр URL',
