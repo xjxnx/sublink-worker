@@ -115,6 +115,9 @@ export const formLogicFn = (t) => {
             justConvertedTimer: null,
             generatedLinks: null,
             shortenedLinks: null,
+            qrCodes: {},
+            qrCodeKey: '',
+            qrCodeLabel: '',
             shortening: false,
             customShortCode: '',
             parsingUrl: false,
@@ -199,6 +202,8 @@ export const formLogicFn = (t) => {
                     this.resetConfigValidation();
                 });
                 this.$watch('customShortCode', val => localStorage.setItem('customShortCode', val));
+                this.$watch('generatedLinks', () => this.updateQRCodes());
+                this.$watch('shortenedLinks', () => this.updateQRCodes());
                 this.$watch('accordionSections', val => localStorage.setItem('accordionSections', JSON.stringify(val)), { deep: true });
                 if (this.generalSettingsProtected) {
                     fetch('/general-settings/session')
@@ -571,6 +576,30 @@ export const formLogicFn = (t) => {
                         })
                     }).catch(() => {});
                 } catch {}
+            },
+
+            updateQRCodes() {
+                const links = this.shortenedLinks || this.generatedLinks || {};
+                this.qrCodes = Object.fromEntries(Object.entries(links).map(([key, url]) => {
+                    if (typeof window.qrcode !== 'function') {
+                        return [key, { error: window.APP_TRANSLATIONS.qrCodeUnavailable }];
+                    }
+                    try {
+                        const code = window.qrcode(0, 'M');
+                        code.addData(url);
+                        code.make();
+                        const svg = code.createSvgTag({ cellSize: 4, margin: 16, scalable: true });
+                        return [key, { src: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) }];
+                    } catch {
+                        return [key, { error: window.APP_TRANSLATIONS.tryShortLinks }];
+                    }
+                }));
+            },
+
+            showQRCode(key, label) {
+                this.qrCodeKey = key;
+                this.qrCodeLabel = label;
+                this.$refs.qrDialog.showModal();
             },
 
             async shortenLinks() {

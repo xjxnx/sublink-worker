@@ -39,6 +39,8 @@ export const Form = (props) => {
     optional: t('optional'),
     customShortCodePlaceholder: t('customShortCodePlaceholder'),
     showFullLinks: t('showFullLinks'),
+    tryShortLinks: t('tryShortLinks'),
+    qrCodeUnavailable: t('qrCodeUnavailable'),
     settingsWrongPassword: t('settingsWrongPassword'),
     settingsTooManyAttempts: t('settingsTooManyAttempts'),
     settingsRequestFailed: t('settingsRequestFailed'),
@@ -494,6 +496,23 @@ export const Form = (props) => {
                     >
                       <i class="fas transition-transform" x-bind:class={`copied === '${field.key}' ? 'fa-check' : 'fa-copy'`}></i>
                     </button>
+                    <button
+                      type="button"
+                      data-label={t(field.labelKey)}
+                      x-on:click={`showQRCode('${field.key}', $el.dataset.label)`}
+                      class="shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-lg border border-gray-200/60 bg-white overflow-hidden flex items-center justify-center text-gray-500 hover:border-primary-400 transition-colors cursor-zoom-in"
+                      title={t('enlargeQRCode')}
+                      aria-label={`${t(field.labelKey)}: ${t('enlargeQRCode')}`}
+                      aria-haspopup="dialog"
+                    >
+                      <img
+                        x-show={`qrCodes.${field.key}?.src`}
+                        x-bind:src={`qrCodes.${field.key}?.src || null`}
+                        alt={t('scanQRCode')}
+                        class="w-full h-full"
+                      />
+                      <i x-show={`!qrCodes.${field.key}?.src`} class="fas fa-qrcode" aria-hidden="true"></i>
+                    </button>
                   </div>
                 </div>
               ))}
@@ -533,6 +552,34 @@ export const Form = (props) => {
           </div>
         </div>
       </div>
+
+      <dialog
+        x-ref="qrDialog"
+        aria-labelledby="qr-dialog-title"
+        class="qr-dialog rounded-2xl p-5 sm:p-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-2xl"
+        x-on:click="if ($event.target === $el) { const rect = $el.getBoundingClientRect(); if ($event.clientX < rect.left || $event.clientX > rect.right || $event.clientY < rect.top || $event.clientY > rect.bottom) $el.close(); }"
+      >
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h2 id="qr-dialog-title" class="font-semibold" x-text="qrCodeLabel"></h2>
+          <button
+            type="button"
+            autofocus
+            x-on:click="$refs.qrDialog.close()"
+            class="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+            aria-label={t('close')}
+          >
+            <i class="fas fa-times" aria-hidden="true"></i>
+          </button>
+        </div>
+        <img
+          x-show="qrCodes[qrCodeKey]?.src"
+          x-bind:src="qrCodes[qrCodeKey]?.src || null"
+          alt={t('scanQRCode')}
+          class="w-full bg-white rounded-lg"
+        />
+        <p x-show="qrCodes[qrCodeKey]?.error" x-text="qrCodes[qrCodeKey]?.error" class="text-sm text-amber-600 dark:text-amber-400 py-8 text-center" role="status"></p>
+        <p x-show="qrCodes[qrCodeKey]?.src" class="text-sm text-center text-gray-500 dark:text-gray-400 mt-4">{t('scanQRCode')}</p>
+      </dialog>
 
       <script dangerouslySetInnerHTML={{ __html: scriptContent }} />
     </div>
