@@ -64,6 +64,11 @@ function normalizeBase64Candidate(text) {
  * @returns {string} - Decoded content
  */
 function decodeContent(text) {
+    // Escapes inside recognized configs belong to individual fields, not the envelope.
+    if (isPlainSubscriptionContent(text)) {
+        return text.trimEnd();
+    }
+
     const urlDecodedText = decodeUriComponentIfNeeded(text);
     if (isPlainSubscriptionContent(urlDecodedText)) {
         return urlDecodedText;
@@ -75,9 +80,13 @@ function decodeContent(text) {
     }
 
     try {
-        const decodedText = decodeUriComponentIfNeeded(decodeBase64(base64Candidate));
+        const decodedText = decodeBase64(base64Candidate).trimEnd();
         if (isPlainSubscriptionContent(decodedText)) {
             return decodedText;
+        }
+        const urlDecodedContent = decodeUriComponentIfNeeded(decodedText);
+        if (isPlainSubscriptionContent(urlDecodedContent)) {
+            return urlDecodedContent;
         }
     } catch (e) {
         return urlDecodedText;

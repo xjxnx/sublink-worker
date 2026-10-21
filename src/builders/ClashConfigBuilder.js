@@ -203,6 +203,8 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
             providers[name] = {
                 type: 'http',
                 url: url,
+                // Upstreams may select the payload format by User-Agent on every refresh.
+                ...(this.userAgent ? { header: { 'User-Agent': [this.userAgent] } } : {}),
                 path: `./proxy_providers/${name}.yaml`,
                 interval: 3600,
                 'health-check': {
