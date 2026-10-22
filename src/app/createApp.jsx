@@ -38,6 +38,7 @@ const NON_INDEXABLE_PATHS = [
     '/shorten-v2',
     '/resolve',
     '/config',
+    '/track-input',
     '/general-settings',
     '/admin',
     '/s/',
@@ -111,6 +112,14 @@ export function createApp(bindings = {}) {
 
     const app = new Hono();
     app.use('*', async (c, next) => {
+        // robots.txt limits crawling but cannot prevent externally linked API URLs from being indexed.
+        const privateRoute = NON_INDEXABLE_PATHS.some(path => path.endsWith('/')
+            ? c.req.path.startsWith(path)
+            : c.req.path === path || c.req.path.startsWith(`${path}/`));
+        await next();
+        if (privateRoute) c.header('X-Robots-Tag', 'noindex, nofollow');
+    });
+    app.use('*', async (c, next) => {
         if (c.req.method === 'GET' || c.req.method === 'HEAD') {
             const redirect = canonicalRedirect(c.req.url, runtime.config.forceHttps);
             if (redirect) return c.redirect(redirect, 308);
@@ -170,9 +179,7 @@ export function createApp(bindings = {}) {
                                 </div>
                                 <Form t={t} lang={lang} generalSettingsProtected={generalSettingsAccess.enabled} />
                                 <ConversionOverview t={t} lang={lang} />
-                                <div id="guide-panel" x-show="guideOpen" x-cloak>
-                                    <HomeGuide t={t} />
-                                </div>
+                                <HomeGuide t={t} />
                             </div>
                         </div>
                     </main>

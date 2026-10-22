@@ -16,18 +16,7 @@ export const HomeGuide = ({ t }) => {
     const bodyClass = 'text-sm sm:text-base leading-relaxed text-gray-600 dark:text-gray-400';
 
     return (
-        <article id="guide" aria-labelledby="guide-title" class="mt-14 space-y-8 scroll-mt-28">
-            <header class="space-y-3">
-                <div class="flex justify-end">
-                    <button type="button" x-on:click="toggleGuide()" class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100/80 dark:hover:bg-gray-800/60 cursor-pointer">
-                        <i class="fas fa-times" aria-hidden="true"></i>
-                        {guide.closeLabel}
-                    </button>
-                </div>
-                <h2 id="guide-title" class={headingClass}>{guide.title}</h2>
-                <p class={bodyClass}>{guide.intro}</p>
-            </header>
-
+        <article id="guide" aria-labelledby="guide-steps" class="mt-14 space-y-8 scroll-mt-28">
             <section aria-labelledby="guide-steps" class="space-y-4">
                 <h2 id="guide-steps" class={headingClass}>{guide.stepsTitle}</h2>
                 <ol class="grid gap-4 md:grid-cols-3">
@@ -46,17 +35,6 @@ export const HomeGuide = ({ t }) => {
                 <div class="space-y-2">
                     <h3 class="font-semibold text-gray-900 dark:text-white">{guide.inputTitle}</h3>
                     <p class={bodyClass}>{guide.inputText}</p>
-                </div>
-                <div class="space-y-3">
-                    <h3 class="font-semibold text-gray-900 dark:text-white">{guide.outputTitle}</h3>
-                    <dl class="grid gap-4 sm:grid-cols-2">
-                        {guide.outputs.map((output) => (
-                            <div class="space-y-1">
-                                <dt class="font-medium text-gray-900 dark:text-white" dir="ltr">{output.name}</dt>
-                                <dd class={bodyClass}>{output.text}</dd>
-                            </div>
-                        ))}
-                    </dl>
                 </div>
                 <p class={bodyClass}>{guide.compatibility}</p>
             </section>
@@ -89,7 +67,7 @@ export const HomeGuide = ({ t }) => {
                     ))}
                 </div>
             </section>
-            <a href="#input" x-on:click="guideOpen = false" class="inline-flex font-semibold text-primary-700 dark:text-primary-300 underline underline-offset-4">{guide.backToTool}</a>
+            <a href="#input" class="inline-flex font-semibold text-primary-700 dark:text-primary-300 underline underline-offset-4">{guide.backToTool}</a>
         </article>
     );
 };

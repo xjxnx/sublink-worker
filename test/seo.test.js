@@ -174,7 +174,7 @@ describe('SEO: /sitemap.xml route', () => {
         for (const block of blocks) {
             const url = block.match(/<loc>(.*?)<\/loc>/)[1];
             const lastmod = block.match(/<lastmod>(.*?)<\/lastmod>/)?.[1];
-            expect(lastmod).toBe('2026-10-06');
+            expect(lastmod).toBe(new URL(url).pathname === '/' ? '2026-10-22' : '2026-10-06');
             const html = await (await app.request(url)).text();
             const schema = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
             const page = schema['@graph'].find(item => item['@type'] === 'WebPage');
@@ -314,7 +314,7 @@ describe('SEO: stable public URLs', () => {
 describe('SEO: visible overview and conversion guides', () => {
     it('links to guides from a visible server-rendered homepage section', async () => {
         const html = await fetchHome();
-        const overview = html.split('<section id="conversion-overview"')[1].split('<div id="guide-panel"')[0];
+        const overview = html.split('<section id="conversion-overview"')[1].split('<article id="guide"')[0];
         expect(overview).not.toContain('x-show');
         expect(overview).not.toContain('x-cloak');
         for (const guide of CONVERSION_GUIDES) {
@@ -371,5 +371,33 @@ describe('SEO: server-rendered usage guide', () => {
         expect(guide).toContain('node.example.com');
         expect(guide.match(/<details\b/g)).toHaveLength(5);
         expect(guide).not.toContain('x-show');
+        expect(guide).not.toContain('x-cloak');
+        expect(html).not.toContain('guideOpen');
+        expect(html).toContain('href="#guide"');
+        expect(html).toContain('href="#input"');
+    });
+});
+
+describe('SEO: private endpoint indexing directives', () => {
+    it.each(['/subconverter', '/clash', '/singbox', '/surge', '/xray', '/shorten-v2', '/resolve', '/admin/inputs', '/general-settings/session', '/c/missing'])('excludes %s from indexing, including errors and redirects', async (path) => {
+        const response = await createTestApp().request(`${ORIGIN}${path}`);
+        expect(response.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+    });
+
+    it('excludes input tracking responses and lists the endpoint in robots.txt', async () => {
+        const app = createTestApp();
+        const response = await app.request(`${ORIGIN}/track-input`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sources: [] })
+        });
+        expect(response.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+        expect(await (await app.request(`${ORIGIN}/robots.txt`)).text()).toContain('Disallow: /track-input');
+    });
+
+    it.each(['/', '/?lang=en-US', '/guides/clash-to-singbox', '/guides/merge-subscriptions', '/sitemap.xml', '/robots.txt'])('keeps %s available for indexing', async (path) => {
+        const response = await createTestApp().request(`${ORIGIN}${path}`);
+        expect(response.status).toBe(200);
+        expect(response.headers.get('X-Robots-Tag')).toBeNull();
     });
 });

@@ -49,25 +49,15 @@ export const Navbar = (props) => {
                     </a>
 
                     <div class="flex items-center gap-1.5 sm:gap-2">
-                        {guideHref ? (
-                            <a href={guideHref} aria-label={guideLabel} title={guideLabel} class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-medium rounded-xl text-primary-700 dark:text-primary-300 whitespace-nowrap">
-                                <i class="fas fa-link text-xs sm:hidden" aria-hidden="true"></i>
-                                <span class="hidden sm:inline">{guideLabel}</span>
-                            </a>
-                        ) : <button
-                            id="guide-toggle"
-                            type="button"
-                            x-on:click="toggleGuide()"
-                            aria-controls="guide-panel"
-                            aria-expanded="false"
-                            x-bind:aria-expanded="guideOpen"
+                        <a
+                            href={guideHref || '#guide'}
                             aria-label={guideLabel}
                             title={guideLabel}
                             class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-medium rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100/80 dark:hover:bg-gray-800/60 transition-colors cursor-pointer whitespace-nowrap"
                         >
                             <i class="fas fa-book-open text-xs" aria-hidden="true"></i>
                             <span class="hidden sm:inline">{guideLabel}</span>
-                        </button>}
+                        </a>
                         {/* Language switcher */}
                         <div x-data="{ open: false }" class="relative">
                             <button
