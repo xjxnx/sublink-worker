@@ -46,7 +46,7 @@ describe('SEO: <html> lang/dir', () => {
 describe('SEO: meta description / keywords are localized', () => {
     it('zh-CN page emits Chinese description (not the previous hardcoded English string)', async () => {
         const html = await fetchHome('zh-CN');
-        expect(html).toContain('<meta name="description" content="在线订阅转换工具，粘贴订阅链接或节点配置，');
+        expect(html).toContain('<meta name="description" content="在线代理订阅转换工具，粘贴订阅即可转换，支持手机扫码导入、广告拦截、自定义分流规则、多端口监听与链式代理，适配 Clash、sing-box、Surge、Xray，兼容 Hysteria2、VLESS、Trojan、AnyTLS 等协议"');
         expect(html).not.toContain('Convert and optimize your subscription links easily');
     });
 
