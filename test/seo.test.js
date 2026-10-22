@@ -166,6 +166,23 @@ describe('SEO: /robots.txt route', () => {
 });
 
 describe('SEO: /sitemap.xml route', () => {
+    it('publishes stable content dates matching each canonical page', async () => {
+        const app = createTestApp();
+        const xml = await (await app.request(`${ORIGIN}/sitemap.xml`)).text();
+        const blocks = xml.match(/<url>[\s\S]*?<\/url>/g);
+        expect(blocks).toHaveLength(6);
+        for (const block of blocks) {
+            const url = block.match(/<loc>(.*?)<\/loc>/)[1];
+            const lastmod = block.match(/<lastmod>(.*?)<\/lastmod>/)?.[1];
+            expect(lastmod).toBe('2026-10-06');
+            const html = await (await app.request(url)).text();
+            const schema = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
+            const page = schema['@graph'].find(item => item['@type'] === 'WebPage');
+            expect(page.url).toBe(url);
+            expect(page.dateModified).toBe(lastmod);
+        }
+    });
+
     it('returns XML with one <url> per language and complete hreflang set', async () => {
         const app = createTestApp();
         const res = await app.request(`${ORIGIN}/sitemap.xml`);

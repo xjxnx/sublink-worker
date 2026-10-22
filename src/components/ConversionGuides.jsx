@@ -46,7 +46,7 @@ export const ConversionGuidePage = ({ guide, origin }) => {
     const jsonLd = {
         '@context': 'https://schema.org',
         '@graph': [
-            { '@type': 'WebPage', '@id': canonicalUrl, url: canonicalUrl, name: guide.title, description: guide.description, inLanguage: 'zh-CN', breadcrumb: { '@id': `${canonicalUrl}#breadcrumb` } },
+            { '@type': 'WebPage', '@id': canonicalUrl, url: canonicalUrl, name: guide.title, description: guide.description, dateModified: guide.updatedAt, inLanguage: 'zh-CN', breadcrumb: { '@id': `${canonicalUrl}#breadcrumb` } },
             {
                 '@type': 'BreadcrumbList', '@id': `${canonicalUrl}#breadcrumb`,
                 itemListElement: [

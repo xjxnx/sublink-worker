@@ -16,7 +16,7 @@ import { proxyToShareLink } from '../parsers/proxyToShareLink.js';
 import { createTranslator, resolveLanguage } from '../i18n/index.js';
 import { DEFAULT_LANG, SUPPORTED_LANGS, X_DEFAULT_LANG, homePath } from '../i18n/languages.js';
 import { encodeBase64, tryDecodeSubscriptionLines, isInvalidNodeName } from '../utils.js';
-import { APP_NAME, APP_SUBTITLE, APP_VERSION, GITHUB_REPO } from '../constants.js';
+import { APP_NAME, APP_SUBTITLE, APP_VERSION, GITHUB_REPO, HOME_CONTENT_UPDATED_AT } from '../constants.js';
 import { ShortLinkService } from '../services/shortLinkService.js';
 import { ConfigStorageService } from '../services/configStorageService.js';
 import { InputLogService } from '../services/inputLogService.js';
@@ -88,7 +88,7 @@ function buildHomeSeo(c, lang, t) {
         '@graph': [
             { '@type': 'WebSite', '@id': `${origin}/#website`, url: `${origin}/`, name: APP_NAME, alternateName: ['在线订阅转换工具', 'Sublink Worker'], inLanguage: SUPPORTED_LANGS.map(entry => entry.hreflang) },
             { ...applicationSchema, '@id': `${origin}/#application` },
-            { '@type': 'WebPage', '@id': canonicalUrl, url: canonicalUrl, name: t('pageTitle'), description: t('pageDescription'), inLanguage: lang, isPartOf: { '@id': `${origin}/#website` }, about: { '@id': `${origin}/#application` } }
+            { '@type': 'WebPage', '@id': canonicalUrl, url: canonicalUrl, name: t('pageTitle'), description: t('pageDescription'), dateModified: HOME_CONTENT_UPDATED_AT, inLanguage: lang, isPartOf: { '@id': `${origin}/#website` }, about: { '@id': `${origin}/#application` } }
         ]
     };
     return {
@@ -214,6 +214,7 @@ export function createApp(bindings = {}) {
             return [
                 '  <url>',
                 `    <loc>${loc}</loc>`,
+                `    <lastmod>${HOME_CONTENT_UPDATED_AT}</lastmod>`,
                 alternateLinks,
                 '    <changefreq>weekly</changefreq>',
                 '    <priority>1.0</priority>',
@@ -223,6 +224,7 @@ export function createApp(bindings = {}) {
         const guideEntries = CONVERSION_GUIDES.map(guide => [
             '  <url>',
             `    <loc>${origin}${guide.path}</loc>`,
+            `    <lastmod>${guide.updatedAt}</lastmod>`,
             '  </url>'
         ].join('\n'));
         const xml = [

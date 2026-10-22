@@ -1,6 +1,7 @@
 export const CONVERSION_GUIDES = [
     {
         path: '/guides/clash-to-singbox',
+        updatedAt: '2026-10-06',
         title: 'Clash 订阅转 Sing-Box：在线转换与导入教程',
         description: '将 Clash 订阅链接或 YAML 配置转换为 Sing-Box JSON。查看在线转换步骤、客户端导入方法、版本选择，以及节点和分流规则的兼容限制。',
         summary: '将 Clash 订阅链接或 YAML 配置转换为 Sing-Box JSON，了解导入步骤和兼容限制。',
@@ -29,6 +30,7 @@ export const CONVERSION_GUIDES = [
     },
     {
         path: '/guides/merge-subscriptions',
+        updatedAt: '2026-10-06',
         title: '合并多个订阅链接：Clash、Sing-Box 在线订阅转换教程',
         description: '多个订阅怎么合并？每行输入一个订阅地址或节点链接，在线生成 Clash、Sing-Box、Surge 或 Xray/V2Ray 订阅。了解更新方式和失效来源的排查方法。',
         summary: '每行输入一个订阅地址，合并多个来源并生成对应客户端的订阅链接。',

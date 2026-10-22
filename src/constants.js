@@ -6,6 +6,8 @@ export const GITHUB_API_RELEASES = 'https://api.github.com/repos/xjxnx/sublink-w
 export const DOCS_URL = 'https://sublink.works';
 
 // SEO and metadata
+// Use the last substantive homepage content change, not the deploy or request date.
+export const HOME_CONTENT_UPDATED_AT = '2026-10-06';
 export const APP_KEYWORDS = 'clash, singbox, surge, subscription, converter, sublink';
 
 // Subtitles for different languages
