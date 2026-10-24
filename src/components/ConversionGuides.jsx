@@ -12,7 +12,7 @@ export const GuideLinks = ({ excludePath, collapsible = false }) => {
         <div class="grid gap-4 sm:grid-cols-2">
             {CONVERSION_GUIDES.filter(guide => guide.path !== excludePath).map(guide => (
                 <a href={guide.path} class="glass rounded-2xl p-5 space-y-2 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors">
-                    <h3 class="font-semibold text-primary-700 dark:text-primary-300">{guide.title}</h3>
+                    <h3 class="text-sm font-semibold leading-relaxed text-primary-700 dark:text-primary-300">{guide.title}</h3>
                     <p class="text-sm leading-relaxed text-gray-600 dark:text-gray-400">{guide.summary}</p>
                 </a>
             ))}
@@ -20,7 +20,7 @@ export const GuideLinks = ({ excludePath, collapsible = false }) => {
     );
 
     return collapsible ? (
-        <CollapsibleSection id="conversion-guides-title" title="订阅转换教程">{links}</CollapsibleSection>
+        <CollapsibleSection id="conversion-guides-title" title="订阅转换教程" icon="fa-book-open">{links}</CollapsibleSection>
     ) : (
         <section aria-labelledby="conversion-guides-title" class="space-y-4">
             <h2 id="conversion-guides-title" class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">订阅转换教程</h2>
@@ -33,12 +33,12 @@ export const ConversionOverview = ({ t, lang }) => {
     const guide = t('homeGuide');
     return (
         <section id="conversion-overview" aria-labelledby="conversion-overview-title" class="mt-10 space-y-3">
-            <CollapsibleSection id="conversion-overview-title" title={guide.title}>
-                <p class="text-sm sm:text-base leading-relaxed text-gray-600 dark:text-gray-400">{guide.intro}</p>
+            <CollapsibleSection id="conversion-overview-title" title={guide.title} icon="fa-right-left">
+                <p class="text-sm leading-relaxed text-gray-600 dark:text-gray-400">{guide.intro}</p>
                 <dl class="grid gap-4 sm:grid-cols-2">
                     {guide.outputs.map(output => (
                         <div class="space-y-1">
-                            <dt class="font-semibold text-gray-900 dark:text-white" dir="ltr">{output.name}</dt>
+                            <dt class="text-sm font-semibold text-gray-800 dark:text-gray-100" dir="ltr">{output.name}</dt>
                             <dd class="text-sm leading-relaxed text-gray-600 dark:text-gray-400">{output.text}</dd>
                         </div>
                     ))}

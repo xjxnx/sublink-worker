@@ -140,6 +140,36 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
 
+  .guide-section {
+    box-shadow: 0 2px 12px rgba(10, 163, 235, 0.03);
+    transition: border-color 180ms ease;
+  }
+  html.dark .guide-section {
+    box-shadow: none;
+  }
+  .guide-section:hover,
+  .guide-section[open] {
+    border-color: rgba(10, 163, 235, 0.2);
+  }
+  .guide-section > summary,
+  .guide-faq-item > summary {
+    list-style: none;
+  }
+  .guide-section > summary::-webkit-details-marker,
+  .guide-faq-item > summary::-webkit-details-marker {
+    display: none;
+  }
+  .guide-section > summary:focus-visible {
+    outline-offset: -3px;
+  }
+  .guide-chevron {
+    transition: transform 180ms ease;
+  }
+  .guide-section[open] > summary .guide-chevron,
+  .guide-faq-item[open] > summary .guide-chevron {
+    transform: rotate(180deg);
+  }
+
   .glass-strong {
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(20px) saturate(200%);

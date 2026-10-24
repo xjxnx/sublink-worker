@@ -136,7 +136,7 @@ describe('SEO: structured data', () => {
 describe('SEO: stylesheet is self-hosted (not Tailwind Play CDN)', () => {
     it('links to /styles.css and does not load cdn.tailwindcss.com', async () => {
         const html = await fetchHome('zh-CN');
-        expect(html).toContain('<link rel="stylesheet" href="/styles.css"');
+        expect(html).toMatch(/<link rel="stylesheet" href="\/styles\.css(?:\?[^\"]*)?"/);
         expect(html).not.toContain('cdn.tailwindcss.com');
     });
 });
