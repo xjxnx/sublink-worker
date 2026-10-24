@@ -1,5 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource hono/jsx */
+import { CollapsibleSection } from './CollapsibleSection.jsx';
 
 const EXAMPLE_LINK = 'ss://YWVzLTEyOC1nY206ZGVtby1wYXNzd29yZA@node.example.com:8388#Demo';
 const EXAMPLE_CLASH = `proxies:
@@ -12,13 +13,11 @@ const EXAMPLE_CLASH = `proxies:
 
 export const HomeGuide = ({ t }) => {
     const guide = t('homeGuide');
-    const headingClass = 'text-xl sm:text-2xl font-bold text-gray-900 dark:text-white';
     const bodyClass = 'text-sm sm:text-base leading-relaxed text-gray-600 dark:text-gray-400';
 
     return (
-        <article id="guide" aria-labelledby="guide-steps" class="mt-14 space-y-8 scroll-mt-28">
-            <section aria-labelledby="guide-steps" class="space-y-4">
-                <h2 id="guide-steps" class={headingClass}>{guide.stepsTitle}</h2>
+        <article id="guide" aria-labelledby="guide-steps" class="mt-3 space-y-3 scroll-mt-28">
+            <CollapsibleSection id="guide-steps" title={guide.stepsTitle}>
                 <ol class="grid gap-4 md:grid-cols-3">
                     {guide.steps.map((step, index) => (
                         <li class="glass rounded-2xl p-5 space-y-3">
@@ -28,19 +27,17 @@ export const HomeGuide = ({ t }) => {
                         </li>
                     ))}
                 </ol>
-            </section>
+            </CollapsibleSection>
 
-            <section aria-labelledby="guide-formats" class="glass rounded-2xl p-5 sm:p-6 space-y-5">
-                <h2 id="guide-formats" class={headingClass}>{guide.formatsTitle}</h2>
+            <CollapsibleSection id="guide-formats" title={guide.formatsTitle}>
                 <div class="space-y-2">
                     <h3 class="font-semibold text-gray-900 dark:text-white">{guide.inputTitle}</h3>
                     <p class={bodyClass}>{guide.inputText}</p>
                 </div>
                 <p class={bodyClass}>{guide.compatibility}</p>
-            </section>
+            </CollapsibleSection>
 
-            <section aria-labelledby="guide-example" class="space-y-4 min-w-0">
-                <h2 id="guide-example" class={headingClass}>{guide.exampleTitle}</h2>
+            <CollapsibleSection id="guide-example" title={guide.exampleTitle}>
                 <p class={bodyClass}>{guide.exampleIntro}</p>
                 <div class="grid gap-4 md:grid-cols-2">
                     {[
@@ -54,11 +51,10 @@ export const HomeGuide = ({ t }) => {
                     ))}
                 </div>
                 <p class="text-sm text-gray-500 dark:text-gray-400">{guide.exampleNote}</p>
-            </section>
+            </CollapsibleSection>
 
-            <section aria-labelledby="guide-faq" class="space-y-4">
-                <h2 id="guide-faq" class={headingClass}>{guide.faqTitle}</h2>
-                <div class="glass rounded-2xl px-5 sm:px-6 divide-y divide-gray-200 dark:divide-gray-700">
+            <CollapsibleSection id="guide-faq" title={guide.faqTitle}>
+                <div class="divide-y divide-gray-200 dark:divide-gray-700">
                     {guide.faqs.map((faq) => (
                         <details class="py-4">
                             <summary class="cursor-pointer font-medium text-gray-900 dark:text-white">{faq.question}</summary>
@@ -66,7 +62,7 @@ export const HomeGuide = ({ t }) => {
                         </details>
                     ))}
                 </div>
-            </section>
+            </CollapsibleSection>
             <a href="#input" class="inline-flex font-semibold text-primary-700 dark:text-primary-300 underline underline-offset-4">{guide.backToTool}</a>
         </article>
     );

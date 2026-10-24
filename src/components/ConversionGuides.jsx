@@ -5,10 +5,10 @@ import { Layout } from './Layout.jsx';
 import { Navbar } from './Navbar.jsx';
 import { Footer } from './Footer.jsx';
 import { APP_NAME } from '../constants.js';
+import { CollapsibleSection } from './CollapsibleSection.jsx';
 
-export const GuideLinks = ({ excludePath }) => (
-    <section aria-labelledby="conversion-guides-title" class="space-y-4">
-        <h2 id="conversion-guides-title" class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">订阅转换教程</h2>
+export const GuideLinks = ({ excludePath, collapsible = false }) => {
+    const links = (
         <div class="grid gap-4 sm:grid-cols-2">
             {CONVERSION_GUIDES.filter(guide => guide.path !== excludePath).map(guide => (
                 <a href={guide.path} class="glass rounded-2xl p-5 space-y-2 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors">
@@ -17,15 +17,23 @@ export const GuideLinks = ({ excludePath }) => (
                 </a>
             ))}
         </div>
-    </section>
-);
+    );
+
+    return collapsible ? (
+        <CollapsibleSection id="conversion-guides-title" title="订阅转换教程">{links}</CollapsibleSection>
+    ) : (
+        <section aria-labelledby="conversion-guides-title" class="space-y-4">
+            <h2 id="conversion-guides-title" class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">订阅转换教程</h2>
+            {links}
+        </section>
+    );
+};
 
 export const ConversionOverview = ({ t, lang }) => {
     const guide = t('homeGuide');
     return (
-        <section id="conversion-overview" aria-labelledby="conversion-overview-title" class="mt-10 space-y-6">
-            <div class="glass rounded-2xl p-5 sm:p-6 space-y-4">
-                <h2 id="conversion-overview-title" class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{guide.title}</h2>
+        <section id="conversion-overview" aria-labelledby="conversion-overview-title" class="mt-10 space-y-3">
+            <CollapsibleSection id="conversion-overview-title" title={guide.title}>
                 <p class="text-sm sm:text-base leading-relaxed text-gray-600 dark:text-gray-400">{guide.intro}</p>
                 <dl class="grid gap-4 sm:grid-cols-2">
                     {guide.outputs.map(output => (
@@ -35,8 +43,8 @@ export const ConversionOverview = ({ t, lang }) => {
                         </div>
                     ))}
                 </dl>
-            </div>
-            {lang === 'zh-CN' && <GuideLinks />}
+            </CollapsibleSection>
+            {lang === 'zh-CN' && <GuideLinks collapsible />}
         </section>
     );
 };

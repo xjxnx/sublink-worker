@@ -312,11 +312,13 @@ describe('SEO: stable public URLs', () => {
 });
 
 describe('SEO: visible overview and conversion guides', () => {
-    it('links to guides from a visible server-rendered homepage section', async () => {
+    it('links to guides from collapsed server-rendered homepage sections', async () => {
         const html = await fetchHome();
         const overview = html.split('<section id="conversion-overview"')[1].split('<article id="guide"')[0];
         expect(overview).not.toContain('x-show');
         expect(overview).not.toContain('x-cloak');
+        expect(overview.match(/<details\b/g)).toHaveLength(2);
+        expect(overview).not.toMatch(/<details\b[^>]*\bopen\b/);
         for (const guide of CONVERSION_GUIDES) {
             expect(overview).toContain(`href="${guide.path}"`);
         }
@@ -369,7 +371,8 @@ describe('SEO: server-rendered usage guide', () => {
         expect(guide).toContain(steps);
         expect(guide).toContain(faq);
         expect(guide).toContain('node.example.com');
-        expect(guide.match(/<details\b/g)).toHaveLength(5);
+        expect(guide.match(/<details\b/g)).toHaveLength(9);
+        expect(guide).not.toMatch(/<details\b[^>]*\bopen\b/);
         expect(guide).not.toContain('x-show');
         expect(guide).not.toContain('x-cloak');
         expect(html).not.toContain('guideOpen');
