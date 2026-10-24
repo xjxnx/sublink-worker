@@ -71,6 +71,7 @@ describe('general settings form access', () => {
       GENERAL_SETTINGS_PROTECTED: true,
       APP_TRANSLATIONS: {
         settingsWrongPassword: 'wrong password',
+        settingsTooManyAttempts: 'locked for 24 hours',
         settingsSessionExpired: 'expired',
         settingsRequestFailed: 'failed'
       },
@@ -120,6 +121,16 @@ describe('general settings form access', () => {
     expect(data.settingsError).toBe('');
     expect(data.generalSettingsUnlocked).toBe(true);
     expect(fetchMock.mock.calls.at(-1)[1].body).toBe(JSON.stringify({ password: 'correct-password' }));
+  });
+
+  it('shows the lockout message and clears the entered password on HTTP 429', async () => {
+    const { data } = setup(vi.fn(async () => ({ ok: false, status: 429 })));
+    data.settingsPassword = 'wrong';
+    await data.unlockGeneralSettings();
+    expect(data.settingsError).toBe('locked for 24 hours');
+    expect(data.settingsPassword).toBe('');
+    expect(data.generalSettingsUnlocked).toBe(false);
+    expect(data.settingsBusy).toBe(false);
   });
 
   it('includes server authorization in generated and copied links', async () => {

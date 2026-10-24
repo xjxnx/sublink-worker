@@ -20,6 +20,34 @@ const ICON_BADGE = 'w-9 h-9 rounded-xl flex items-center justify-center text-sm 
 export const Form = (props) => {
   const { t, lang } = props;
 
+  const inputActions = (model) => [
+    {
+      key: 'paste',
+      icon: 'fas fa-paste',
+      label: t('paste'),
+      hideLabelOnMobile: true,
+      className:
+        'px-2.5 py-1.5 text-xs font-medium bg-gray-100/80 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/30 hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-1.5 cursor-pointer',
+      title: t('paste'),
+      attrs: {
+        'x-on:click': `navigator.clipboard.readText().then(text => ${model} = text).catch(() => {})`
+      }
+    },
+    {
+      key: 'clear',
+      icon: 'fas fa-times',
+      label: t('clear'),
+      hideLabelOnMobile: true,
+      className:
+        'px-2.5 py-1.5 text-xs font-medium bg-gray-100/80 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 transition-colors flex items-center gap-1.5 cursor-pointer',
+      title: t('clear'),
+      attrs: {
+        'x-on:click': `${model} = ''`,
+        'x-show': model
+      }
+    }
+  ];
+
   const translations = {
     processing: t('processing'),
     convert: t('convert'),
@@ -78,33 +106,7 @@ export const Form = (props) => {
             placeholder={t('urlPlaceholder')}
             required
             labelActionsWrapperClass="flex gap-2 opacity-60 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-            labelActions={[
-              {
-                key: 'paste',
-                icon: 'fas fa-paste',
-                label: t('paste'),
-                hideLabelOnMobile: true,
-                className:
-                  'px-2.5 py-1.5 text-xs font-medium bg-gray-100/80 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/30 hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-1.5 cursor-pointer',
-                title: t('paste'),
-                attrs: {
-                  'x-on:click': "navigator.clipboard.readText().then(text => input = text).catch(() => {})"
-                }
-              },
-              {
-                key: 'clear',
-                icon: 'fas fa-times',
-                label: t('clear'),
-                hideLabelOnMobile: true,
-                className:
-                  'px-2.5 py-1.5 text-xs font-medium bg-gray-100/80 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 transition-colors flex items-center gap-1.5 cursor-pointer',
-                title: t('clear'),
-                attrs: {
-                  'x-on:click': "input = ''",
-                  'x-show': 'input'
-                }
-              }
-            ]}
+            labelActions={inputActions('input')}
           />
           <div x-show="chainProxy && canUseGeneralSettings()" x-cloak class="mt-5 space-y-2 border-t border-gray-200/60 dark:border-gray-700/60 pt-4">
             <TextareaWithActions
@@ -117,6 +119,9 @@ export const Form = (props) => {
                   <i class="fas fa-route"></i>
                 </span>
               }
+              labelWrapperClass="flex items-center justify-between gap-3 mb-2"
+              labelActionsWrapperClass="flex shrink-0 gap-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200"
+              labelActions={inputActions('chainProxyInput')}
               model="chainProxyInput"
               rows={3}
               placeholder={'socks5://user:password@server:1080#SOCKS5\nhttp://user:password@server:8080#HTTP'}

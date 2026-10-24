@@ -1,5 +1,6 @@
 import { getSignedCookie, setSignedCookie, deleteCookie } from 'hono/cookie';
 import { bodyLimit } from 'hono/body-limit';
+import { createPasswordAttemptLimiter } from './passwordAttemptLimiter.js';
 
 const COOKIE_NAME = 'general_settings_session';
 const SESSION_SECONDS = 12 * 60 * 60;
@@ -22,7 +23,7 @@ function signingPayload(url) {
     return encoder.encode(`general-settings-link:v1:${url.origin}?${params}`);
 }
 
-export function registerGeneralSettingsAccess(app, password) {
+export function registerGeneralSettingsAccess(app, password, kv = null) {
     const enabled = Boolean(password);
     const sessionSecret = `general-settings-session:v1:${password}`;
     let signingKey;
@@ -65,16 +66,10 @@ export function registerGeneralSettingsAccess(app, password) {
         await next();
     });
 
-    // This bounds repeated guesses per serving instance without requiring a KV binding.
-    const failures = new Map();
+    const checkPasswordAttempt = createPasswordAttemptLimiter(kv);
     app.post('/general-settings/unlock', bodyLimit({ maxSize: 4096 }), async (c) => {
         if (!enabled) return c.json({ unlocked: true });
-        const client = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown';
-        const attempt = failures.get(client);
-        if (attempt?.until > Date.now() && attempt.count >= 5) {
-            c.header('Retry-After', String(Math.ceil((attempt.until - Date.now()) / 1000)));
-            return c.json({ error: 'Too many attempts' }, 429);
-        }
+        const client = (c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown').split(',')[0].trim() || 'unknown';
         let provided;
         try {
             provided = (await c.req.json())?.password;
@@ -84,21 +79,30 @@ export function registerGeneralSettingsAccess(app, password) {
         if (typeof provided !== 'string' || provided.length > 1024) {
             return c.json({ error: 'Invalid payload' }, 400);
         }
-        const [expected, actual] = await Promise.all([
-            crypto.subtle.digest('SHA-256', encoder.encode(password)),
-            crypto.subtle.digest('SHA-256', encoder.encode(provided))
-        ]);
-        const actualBytes = new Uint8Array(actual);
-        const difference = new Uint8Array(expected).reduce((diff, byte, i) => diff | (byte ^ actualBytes[i]), 0);
-        if (difference !== 0) {
-            if (failures.size >= 1000) failures.delete(failures.keys().next().value);
-            failures.set(client, {
-                count: attempt?.until > Date.now() ? attempt.count + 1 : 1,
-                until: attempt?.until > Date.now() ? attempt.until : Date.now() + 60_000
+        // Keyed hashes keep client IPs and the password out of persisted storage keys.
+        const signature = await crypto.subtle.sign('HMAC', await getSigningKey(), encoder.encode(`password-attempt:${client}`));
+        const key = 'general-settings-attempt:' + Array.from(new Uint8Array(signature), byte => byte.toString(16).padStart(2, '0')).join('');
+        let result;
+        try {
+            result = await checkPasswordAttempt(key, async () => {
+                const [expected, actual] = await Promise.all([
+                    crypto.subtle.digest('SHA-256', encoder.encode(password)),
+                    crypto.subtle.digest('SHA-256', encoder.encode(provided))
+                ]);
+                const actualBytes = new Uint8Array(actual);
+                return new Uint8Array(expected).reduce((diff, byte, i) => diff | (byte ^ actualBytes[i]), 0) === 0;
             });
+        } catch {
+            return c.json({ error: 'Password attempt storage unavailable' }, 503);
+        }
+        if (result.lockedUntil) {
+            const retryAfter = Math.max(1, Math.ceil((result.lockedUntil - Date.now()) / 1000));
+            c.header('Retry-After', String(retryAfter));
+            return c.json({ error: 'Too many attempts', retryAfter }, 429);
+        }
+        if (!result.unlocked) {
             return c.json({ error: 'Invalid password' }, 403);
         }
-        failures.delete(client);
         await setSignedCookie(c, COOKIE_NAME, String(Date.now() + SESSION_SECONDS * 1000), sessionSecret, {
             httpOnly: true,
             secure: new URL(c.req.url).protocol === 'https:',

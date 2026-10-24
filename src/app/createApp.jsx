@@ -126,7 +126,7 @@ export function createApp(bindings = {}) {
         }
         await next();
     });
-    const generalSettingsAccess = registerGeneralSettingsAccess(app, runtime.config.generalSettingsPassword);
+    const generalSettingsAccess = registerGeneralSettingsAccess(app, runtime.config.generalSettingsPassword, runtime.kv);
 
     app.use('*', async (c, next) => {
         const acceptLanguage = getRequestHeader(c.req, 'Accept-Language');
