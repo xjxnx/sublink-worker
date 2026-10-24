@@ -92,12 +92,13 @@ describe('general settings form access', () => {
     const { data } = setup(fetchMock);
     Object.assign(data, {
       groupByCountry: true, includeAutoSelect: false, excludeInvalidNodes: true,
-      enableClashUI: true, externalController: '0.0.0.0:9090', multiPort: true
+      enableClashUI: true, externalController: '0.0.0.0:9090', multiPort: true,
+      chainProxy: true, chainProxyInput: 'socks://user:pass@server:1080'
     });
     await data.submitForm();
     for (const url of [...Object.values(data.generatedLinks), data.getSubconverterUrl()]) {
       const params = new URL(url).searchParams;
-      for (const key of ['group_by_country', 'include_auto_select', 'exclude_invalid_nodes', 'enable_clash_ui', 'multiPort', 'external_controller']) {
+      for (const key of ['group_by_country', 'include_auto_select', 'exclude_invalid_nodes', 'enable_clash_ui', 'multiPort', 'external_controller', 'chain_proxy', 'chain_proxy_input']) {
         expect(params.has(key)).toBe(false);
       }
     }

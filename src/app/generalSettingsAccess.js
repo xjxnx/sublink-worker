@@ -7,7 +7,7 @@ const CONVERSION_PATHS = ['/singbox', '/clash', '/surge', '/xray', '/subconverte
 const encoder = new TextEncoder();
 
 function usesGeneralSettings(params) {
-    return ['group_by_country', 'exclude_invalid_nodes', 'enable_clash_ui', 'multiPort']
+    return ['group_by_country', 'exclude_invalid_nodes', 'enable_clash_ui', 'multiPort', 'chain_proxy']
         .some(key => params.getAll(key).includes('true')) ||
         params.getAll('include_auto_select').includes('false') ||
         ['external_controller', 'external_ui_download_url', 'basePort', 'count']

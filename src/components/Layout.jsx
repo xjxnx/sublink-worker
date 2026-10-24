@@ -71,7 +71,7 @@ export const Layout = (props) => {
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
         <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-        <link rel="stylesheet" href="/styles.css?v=guide-compact-1" />
+        <link rel="stylesheet" href="/styles.css?v=chain-proxy-1" />
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
         <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
         <script defer src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>

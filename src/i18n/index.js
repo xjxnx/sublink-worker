@@ -14,6 +14,9 @@ export const translations = {
     externalUiDownloadUrl: 'Clash UI 下载地址',
     externalUiDownloadUrlPlaceholder: '默认 zashboard 仓库压缩包地址',
     enableMultiPort: '启用多端口监听（仅 Clash Meta / Mihomo）',
+    enableChainProxy: '链式代理（仅 Clash Meta / Stash）',
+    chainProxyInput: '链式代理 SOCKS5 / HTTP 节点',
+    chainProxyTip: '每行一个节点，支持明文或 Base64 用户信息；通过“🗺️ 前置代理”连接，仅对 Clash / Stash 链接生效。',
     multiPortBasePort: '起始端口',
     multiPortCount: '端口数量',
     missingInput: '缺少输入参数',
@@ -205,6 +208,9 @@ export const translations = {
     externalUiDownloadUrl: 'External UI Download URL',
     externalUiDownloadUrlPlaceholder: 'Default zashboard archive URL',
     enableMultiPort: 'Enable multi-port listeners (Clash Meta / Mihomo only)',
+    enableChainProxy: 'Chain proxy (Clash Meta / Stash only)',
+    chainProxyInput: 'Chain proxy SOCKS5 / HTTP nodes',
+    chainProxyTip: 'One node per line, with plain or Base64 credentials. Connects through “🗺️ 前置代理”; applies only to Clash / Stash links.',
     multiPortBasePort: 'Base port',
     multiPortCount: 'Port count',
     missingInput: 'Missing input parameter',
@@ -386,6 +392,9 @@ export const translations = {
     later: 'Later'
   },
   'fa': {
+    enableChainProxy: 'پروکسی زنجیره‌ای (فقط Clash Meta / Stash)',
+    chainProxyInput: 'گره‌های SOCKS5 / HTTP پروکسی زنجیره‌ای',
+    chainProxyTip: 'هر گره در یک خط، با اطلاعات ورود متنی یا Base64؛ اتصال از طریق «🗺️ 前置代理» فقط برای لینک‌های Clash / Stash.',
     homeGuide: homeGuideTranslations.fa,
     footerDonate: 'حمایت با PayPal',
     missingInput: 'پارامتر ورودی وجود ندارد',
@@ -567,6 +576,9 @@ export const translations = {
     later: 'بعداً'
   },
   'ru': {
+    enableChainProxy: 'Цепочка прокси (только Clash Meta / Stash)',
+    chainProxyInput: 'Узлы SOCKS5 / HTTP для цепочки прокси',
+    chainProxyTip: 'Один узел на строку, данные входа обычные или Base64. Подключение через «🗺️ 前置代理», только для ссылок Clash / Stash.',
     homeGuide: homeGuideTranslations.ru,
     footerDonate: 'Поддержать через PayPal',
     missingInput: 'Отсутствует входной параметр',

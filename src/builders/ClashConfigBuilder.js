@@ -1,12 +1,13 @@
 import yaml from 'js-yaml';
 import { CLASH_CONFIG, generateRules, generateClashRuleSets, getOutbounds, PREDEFINED_RULE_SETS, DIRECT_DEFAULT_RULES } from '../config/index.js';
 import { BaseConfigBuilder } from './BaseConfigBuilder.js';
-import { deepCopy, groupProxiesByCountry } from '../utils.js';
+import { deepCopy, groupProxiesByCountry, tryDecodeSubscriptionLines } from '../utils.js';
 import { addProxyWithDedup } from './helpers/proxyHelpers.js';
 import { buildSelectorMembers, buildNodeSelectMembers, buildCustomRuleMembers, uniqueNames } from './helpers/groupBuilder.js';
 import { emitClashRules, sanitizeClashProxyGroups } from './helpers/clashConfigUtils.js';
 import { normalizeGroupName, findGroupIndexByName } from './helpers/groupNameUtils.js';
 import { InvalidConfigError } from '../services/errors.js';
+import { parseSocksHttp } from '../parsers/protocols/socksHttpParser.js';
 
 /**
  * Check if the client supports MRS (Meta Rule Set) format
@@ -109,6 +110,7 @@ function dumpClashConfig(config) {
 }
 
 const MULTI_PORT_GLOBAL_GROUP = '全部节点';
+const CHAIN_PROXY_GROUP = '🗺️ 前置代理';
 
 // Returns sanitized {basePort, count} or null when input is invalid; invalid input is ignored, not an error.
 function normalizeMultiPortOptions(options) {
@@ -189,7 +191,14 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
      * @returns {boolean} - True if format is Clash YAML
      */
     isCompatibleProviderFormat(format) {
-        return format === 'clash';
+        // Stash cannot filter provider members by protocol, so chain pools need resolved nodes.
+        const needsResolvedChainNodes = this.chainProxyOptions?.enabled === true && this.isStashClient();
+        return format === 'clash' && !needsResolvedChainNodes;
+    }
+
+    isStashClient() {
+        // A custom upstream UA must not change the consuming client's chain format.
+        return /stash/i.test(this.chainProxyOptions?.clientUserAgent || this.userAgent || '');
     }
 
     /**
@@ -247,12 +256,37 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
         return this.config.proxies || [];
     }
 
+    async parseCustomItems() {
+        const items = await super.parseCustomItems();
+        if (this.chainProxyOptions?.enabled !== true) return items;
+        const chainItems = (this.chainProxyOptions.input || '').split(/\r?\n/)
+            .map(line => line.trim()).filter(Boolean)
+            .flatMap(line => tryDecodeSubscriptionLines(line))
+            .map(line => ({ ...parseSocksHttp(line), 'dialer-proxy': CHAIN_PROXY_GROUP }));
+        return [...items, ...chainItems];
+    }
+
     getProxyName(proxy) {
         return proxy.name;
     }
 
     convertProxy(proxy) {
         switch (proxy.type) {
+            case 'socks':
+            case 'http':
+                return {
+                    name: proxy.tag,
+                    type: proxy.type === 'socks' ? 'socks5' : 'http',
+                    server: proxy.server,
+                    port: proxy.server_port,
+                    ...(proxy.username !== undefined ? { username: proxy.username } : {}),
+                    ...(proxy.password !== undefined ? { password: proxy.password } : {}),
+                    ...(proxy.type === 'socks' ? { udp: getClashUdpValue(proxy) } : {}),
+                    ...(proxy.tls?.enabled ? { tls: true } : {}),
+                    ...(proxy.tls?.server_name ? { sni: proxy.tls.server_name } : {}),
+                    ...(proxy.tls?.insecure !== undefined ? { 'skip-cert-verify': proxy.tls.insecure } : {}),
+                    ...(proxy['dialer-proxy'] ? { 'dialer-proxy': proxy['dialer-proxy'] } : {})
+                };
             case 'shadowsocks':
                 return {
                     name: proxy.tag,
@@ -781,6 +815,27 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                 ...this.config['proxy-providers'],
                 ...this.generateProxyProviders()
             };
+        }
+
+        if (this.chainProxyOptions?.enabled === true) {
+            if (this.getProxies().some(proxy => proxy.name === CHAIN_PROXY_GROUP)) {
+                throw new InvalidConfigError(`Proxy name "${CHAIN_PROXY_GROUP}" is reserved for the chain proxy group`);
+            }
+            this.config['proxy-groups'] = (this.config['proxy-groups'] || []).filter(group => group.name !== CHAIN_PROXY_GROUP);
+            this.config['proxy-groups'].push({
+                name: CHAIN_PROXY_GROUP,
+                type: 'select',
+                ...(this.isStashClient() ? {
+                    // Explicit membership also keeps the chain acyclic on clients without exclude-type.
+                    proxies: this.getProxies()
+                        .filter(proxy => !['socks', 'socks5', 'http'].includes(String(proxy.type).toLowerCase()) && !proxy.name.startsWith('直连'))
+                        .map(proxy => proxy.name)
+                } : {
+                    'include-all': true,
+                    filter: '^(?!直连).*',
+                    'exclude-type': 'Socks5|Http'
+                })
+            });
         }
 
         sanitizeClashProxyGroups(this.config);

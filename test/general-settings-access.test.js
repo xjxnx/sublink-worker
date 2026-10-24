@@ -52,7 +52,8 @@ describe('general settings password protection', () => {
     it.each([
         'include_auto_select=false', 'exclude_invalid_nodes=true', 'enable_clash_ui=true',
         'external_controller=0.0.0.0%3A9090', 'external_ui_download_url=https%3A%2F%2Fexample.com%2Fui.zip',
-        'multiPort=true', 'basePort=20000', 'count=3', 'group_by_country=false&group_by_country=true'
+        'multiPort=true', 'basePort=20000', 'count=3', 'chain_proxy=true',
+        'chain_proxy=false&chain_proxy=true', 'group_by_country=false&group_by_country=true'
     ])('guards protected option %s', async (option) => {
         expect((await createTestApp().request(subscriptionUrl('/clash', option))).status).toBe(403);
     });

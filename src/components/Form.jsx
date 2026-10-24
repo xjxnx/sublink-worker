@@ -106,6 +106,23 @@ export const Form = (props) => {
               }
             ]}
           />
+          <div x-show="chainProxy && canUseGeneralSettings()" x-cloak class="mt-5 space-y-2 border-t border-gray-200/60 dark:border-gray-700/60 pt-4">
+            <TextareaWithActions
+              id="chain-proxy-input"
+              name="chain_proxy_input"
+              label={t('chainProxyInput')}
+              labelClass="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300"
+              labelPrefix={
+                <span class="w-7 h-7 rounded-lg bg-primary-50 dark:bg-primary-900/30 text-primary-500 dark:text-primary-400 flex items-center justify-center text-xs shrink-0" aria-hidden="true">
+                  <i class="fas fa-route"></i>
+                </span>
+              }
+              model="chainProxyInput"
+              rows={3}
+              placeholder={'socks5://user:password@server:1080#SOCKS5\nhttp://user:password@server:8080#HTTP'}
+            />
+            <p class="text-xs text-gray-500 dark:text-gray-400">{t('chainProxyTip')}</p>
+          </div>
         </div>
 
         {/* ============ 2. PRIMARY CTA + SECONDARY ACTIONS ============ */}
@@ -307,6 +324,14 @@ export const Form = (props) => {
                   <input type="text" x-model="externalUiDownloadUrl" class="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-200/70 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors" placeholder={t('externalUiDownloadUrlPlaceholder')} />
                 </div>
               </div>
+
+              <label class="flex items-center justify-between p-2.5 rounded-xl bg-gray-50/60 dark:bg-gray-800/40 hover:bg-gray-100/80 dark:hover:bg-gray-700/40 transition-colors cursor-pointer gap-3">
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{t('enableChainProxy')}</span>
+                <div class="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input type="checkbox" x-model="chainProxy" class="sr-only peer" />
+                  <div class="bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300/50 dark:peer-focus:ring-primary-800/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-primary-500 peer-checked:to-primary-600" style="width:2.5rem;height:1.375rem"></div>
+                </div>
+              </label>
 
               <label class="flex items-center justify-between p-2.5 rounded-xl bg-gray-50/60 dark:bg-gray-800/40 hover:bg-gray-100/80 dark:hover:bg-gray-700/40 transition-colors cursor-pointer gap-3">
                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{t('enableMultiPort')}</span>

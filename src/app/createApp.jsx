@@ -348,6 +348,11 @@ export function createApp(bindings = {}) {
                 includeAutoSelect,
                 multiPortOptions
             );
+            builder.chainProxyOptions = {
+                enabled: parseBooleanFlag(c.req.query('chain_proxy')),
+                input: c.req.query('chain_proxy_input') || '',
+                clientUserAgent: getRequestHeader(c.req, 'User-Agent') || ua
+            };
             builder.excludeInvalidNodes = parseBooleanFlag(c.req.query('exclude_invalid_nodes'));
             await builder.build();
             const userinfo = builder.getSubscriptionUserinfo();

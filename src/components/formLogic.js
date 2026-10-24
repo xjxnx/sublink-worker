@@ -101,6 +101,8 @@ export const formLogicFn = (t) => {
             multiPort: false,
             multiPortBasePort: 20000,
             multiPortCount: 3,
+            chainProxy: false,
+            chainProxyInput: '',
             configType: 'singbox',
             configEditor: '',
             savingConfig: false,
@@ -159,6 +161,8 @@ export const formLogicFn = (t) => {
                 this.multiPort = localStorage.getItem('multiPort') === 'true';
                 this.multiPortBasePort = Number(localStorage.getItem('multiPortBasePort')) || 20000;
                 this.multiPortCount = Number(localStorage.getItem('multiPortCount')) || 3;
+                this.chainProxy = localStorage.getItem('chainProxy') === 'true';
+                this.chainProxyInput = localStorage.getItem('chainProxyInput') || '';
                 this.customUA = localStorage.getItem('userAgent') || '';
                 this.configEditor = localStorage.getItem('configEditor') || '';
                 this.configType = localStorage.getItem('configType') || 'singbox';
@@ -194,6 +198,8 @@ export const formLogicFn = (t) => {
                 this.$watch('multiPort', val => localStorage.setItem('multiPort', val));
                 this.$watch('multiPortBasePort', val => localStorage.setItem('multiPortBasePort', val));
                 this.$watch('multiPortCount', val => localStorage.setItem('multiPortCount', val));
+                this.$watch('chainProxy', val => localStorage.setItem('chainProxy', val));
+                this.$watch('chainProxyInput', val => localStorage.setItem('chainProxyInput', val));
                 this.$watch('customUA', val => localStorage.setItem('userAgent', val));
                 this.$watch('configEditor', val => {
                     localStorage.setItem('configEditor', val);
@@ -290,6 +296,10 @@ export const formLogicFn = (t) => {
                     params.append('multiPort', 'true');
                     params.append('basePort', String(this.multiPortBasePort));
                     params.append('count', String(this.multiPortCount));
+                }
+                if (this.chainProxy) {
+                    params.append('chain_proxy', 'true');
+                    if (this.chainProxyInput.trim()) params.append('chain_proxy_input', this.chainProxyInput.trim());
                 }
             },
 
@@ -501,6 +511,7 @@ export const formLogicFn = (t) => {
             clearAll() {
                 if (confirm(window.APP_TRANSLATIONS.confirmClearAll)) {
                     this.input = '';
+                    this.chainProxyInput = '';
                     this.generatedLinks = null;
                     this.shortenedLinks = null;
                     this.customShortCode = '';
@@ -881,6 +892,8 @@ export const formLogicFn = (t) => {
                 }
 
                 this.multiPort = params.get('multiPort') === 'true';
+                this.chainProxy = params.get('chain_proxy') === 'true';
+                this.chainProxyInput = params.get('chain_proxy_input') || '';
                 const basePort = params.get('basePort');
                 if (basePort) this.multiPortBasePort = Number(basePort) || 20000;
                 const portCount = params.get('count');
@@ -899,7 +912,7 @@ export const formLogicFn = (t) => {
 
                 // Expand advanced options if any advanced settings are present
                 if (selectedRules || customRules || this.groupByCountry || this.excludeInvalidNodes || this.enableClashUI ||
-                    externalController || externalUiDownloadUrl || ua || configId || this.multiPort) {
+                    externalController || externalUiDownloadUrl || ua || configId || this.multiPort || this.chainProxy) {
                     this.showAdvanced = true;
                 }
             }

@@ -7,6 +7,20 @@ export function convertYamlProxyToObject(p) {
         return Array.isArray(value) ? value : [value];
     };
     switch (type) {
+        case 'socks5':
+        case 'http':
+            return {
+                tag: name,
+                type: type === 'socks5' ? 'socks' : 'http',
+                server: p.server,
+                server_port: Number(p.port),
+                ...(type === 'socks5' ? { version: '5' } : {}),
+                username: p.username,
+                password: p.password,
+                udp: p.udp,
+                tls: p.tls ? { enabled: true, server_name: p.sni, insecure: p['skip-cert-verify'] } : undefined,
+                ...(p['dialer-proxy'] ? { 'dialer-proxy': p['dialer-proxy'] } : {})
+            };
         case 'ss':
         case 'shadowsocks':
             return {

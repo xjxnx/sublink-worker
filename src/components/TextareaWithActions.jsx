@@ -15,6 +15,7 @@ export const TextareaWithActions = (props) => {
     containerClass = '',
     textareaClass = '',
     labelWrapperClass = 'flex items-center justify-between mb-2',
+    labelClass = 'block text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2',
     labelActions = [],
     labelActionsWrapperClass = 'flex gap-2',
     inlineActions = [],
@@ -87,7 +88,7 @@ export const TextareaWithActions = (props) => {
           {hasLabelContent ? (
             <label
               for={id}
-              class="block text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2"
+              class={labelClass}
             >
               {labelPrefix}
               {label}
