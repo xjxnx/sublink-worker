@@ -82,6 +82,8 @@ export const formLogicFn = (t) => {
             },
             selectedRules: [],
             selectedPredefinedRule: 'balanced',
+            ruleOptionsCategory: '',
+            ruleOptionsDraft: [],
             subconverterCopied: false,
             signedSubconverterUrl: '',
             signedSubconverterSource: '',
@@ -303,6 +305,42 @@ export const formLogicFn = (t) => {
                 if (rules && rules[this.selectedPredefinedRule]) {
                     this.selectedRules = rules[this.selectedPredefinedRule];
                 }
+            },
+
+            getRuleOptions(category) {
+                const options = window.RULE_OPTIONS || {};
+                return Object.hasOwn(options, category) ? options[category] : [];
+            },
+
+            getSelectedRuleOptionCount(category) {
+                return this.getRuleOptions(category).filter(option => this.selectedRules.includes(option.name)).length;
+            },
+
+            toggleRuleCategory(category, checked) {
+                const childNames = this.getRuleOptions(category).map(option => option.name);
+                this.selectedRules = this.selectedRules.filter(name => name !== category && !childNames.includes(name));
+                if (checked) this.selectedRules.push(category);
+                this.selectedPredefinedRule = 'custom';
+            },
+
+            openRuleOptions(category) {
+                this.ruleOptionsCategory = category;
+                const grouped = this.selectedRules.includes(category);
+                this.ruleOptionsDraft = this.getRuleOptions(category)
+                    .filter(option => grouped || this.selectedRules.includes(option.name))
+                    .map(option => option.name);
+                this.$refs.ruleOptionsDialog.showModal();
+            },
+
+            applyRuleOptions() {
+                const category = this.ruleOptionsCategory;
+                const selected = this.getRuleOptions(category)
+                    .filter(option => this.ruleOptionsDraft.includes(option.name))
+                    .map(option => option.name);
+                // Explicit child selections stay separate even when every child is checked.
+                this.toggleRuleCategory(category, false);
+                this.selectedRules.push(...selected);
+                this.$refs.ruleOptionsDialog.close();
             },
 
             getSubconverterUrl() {

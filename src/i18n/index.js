@@ -1,4 +1,5 @@
 import { homeGuideTranslations } from './homeGuide.js';
+import { RULE_OPTIONS_BY_NAME } from '../config/rules.js';
 import { checkStartsWith } from "../utils.js";
 
 // 定义语言包
@@ -52,6 +53,12 @@ export const translations = {
     savedPaths: '已保存的路径',
     shortenLinks: '生成短链接',
     ruleSelection: '规则选择',
+    chooseRuleServices: '选择服务',
+    ruleServicesHint: '每个选中的服务会生成独立分组。勾选分类复选框则使用一个分类分组。',
+    selectAllRules: '全选',
+    clearRuleSelection: '清空',
+    cancelRuleSelection: '取消',
+    applyRuleSelection: '应用',
     ruleSelectionTooltip: '选择您需要的规则集',
     copySubconverterUrl: '复制配置地址',
     copiedSubconverterUrl: '已复制！',
@@ -237,6 +244,12 @@ export const translations = {
     savedPaths: 'Saved Paths',
     shortenLinks: 'Generate Short Links',
     ruleSelection: 'Rule Selection',
+    chooseRuleServices: 'Choose services',
+    ruleServicesHint: 'Each selected service gets its own group. Use the category checkbox for a single category group.',
+    selectAllRules: 'Select all',
+    clearRuleSelection: 'Clear',
+    cancelRuleSelection: 'Cancel',
+    applyRuleSelection: 'Apply',
     ruleSelectionTooltip: 'Select your desired rule sets',
     copySubconverterUrl: 'Copy Config URL',
     copiedSubconverterUrl: 'Copied!',
@@ -412,6 +425,12 @@ export const translations = {
     savedPaths: 'مسیرهای ذخیره شده',
     shortenLinks: 'ایجاد لینک‌های کوتاه',
     ruleSelection: 'انتخاب قوانین',
+    chooseRuleServices: 'انتخاب سرویس‌ها',
+    ruleServicesHint: 'هر سرویس انتخاب‌شده گروه جداگانه دارد. برای یک گروه دسته‌بندی، کادر دسته‌بندی را انتخاب کنید.',
+    selectAllRules: 'انتخاب همه',
+    clearRuleSelection: 'پاک کردن',
+    cancelRuleSelection: 'انصراف',
+    applyRuleSelection: 'اعمال',
     ruleSelectionTooltip: 'مجموعه قوانین مورد نظر خود را انتخاب کنید',
     copySubconverterUrl: 'کپی آدرس پیکربندی',
     copiedSubconverterUrl: 'کپی شد!',
@@ -587,6 +606,12 @@ export const translations = {
     savedPaths: 'Сохранённые пути',
     shortenLinks: 'Создать короткие ссылки',
     ruleSelection: 'Выбор правил',
+    chooseRuleServices: 'Выбрать сервисы',
+    ruleServicesHint: 'Для каждого выбранного сервиса создаётся отдельная группа. Флажок категории создаёт одну общую группу.',
+    selectAllRules: 'Выбрать все',
+    clearRuleSelection: 'Очистить',
+    cancelRuleSelection: 'Отмена',
+    applyRuleSelection: 'Применить',
     ruleSelectionTooltip: 'Выберите нужные наборы правил',
     copySubconverterUrl: 'Скопировать URL',
     copiedSubconverterUrl: 'Скопировано!',
@@ -742,6 +767,12 @@ export function createTranslator(lang) {
   const currentLang = resolveLanguage(lang);
 
   return function t(key) {
+    const optionName = key.startsWith('outboundNames.') ? key.slice('outboundNames.'.length) : '';
+    const option = Object.hasOwn(RULE_OPTIONS_BY_NAME, optionName) ? RULE_OPTIONS_BY_NAME[optionName] : undefined;
+    if (option) {
+      const category = translations[currentLang].outboundNames[option.parent];
+      return `${category.split(' ')[0]}${option.label}`;
+    }
     const keys = key.split('.');
     let value = translations[currentLang];
 

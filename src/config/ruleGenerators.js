@@ -3,7 +3,7 @@
  * Functions for generating rules and rule sets
  */
 
-import { UNIFIED_RULES, PREDEFINED_RULE_SETS, SITE_RULE_SETS, IP_RULE_SETS, CLASH_SITE_RULE_SETS, CLASH_IP_RULE_SETS } from './rules.js';
+import { UNIFIED_RULES, RULE_OPTIONS, PREDEFINED_RULE_SETS, SITE_RULE_SETS, IP_RULE_SETS } from './rules.js';
 import { SITE_RULE_SET_BASE_URL, IP_RULE_SET_BASE_URL, CLASH_SITE_RULE_SET_BASE_URL, CLASH_IP_RULE_SET_BASE_URL } from './ruleUrls.js';
 
 function toStringArray(value) {
@@ -26,39 +26,38 @@ function sanitizeRuleIds(values) {
 	return toStringArray(values).filter(value => SAFE_RULE_ID_RE.test(value));
 }
 
+function resolveSelectedRuleDefinitions(selectedRules) {
+	if (typeof selectedRules === 'string' && Object.hasOwn(PREDEFINED_RULE_SETS, selectedRules)) {
+		selectedRules = PREDEFINED_RULE_SETS[selectedRules];
+	}
+	if (!Array.isArray(selectedRules) || selectedRules.length === 0) {
+		selectedRules = PREDEFINED_RULE_SETS.minimal;
+	}
+	const selected = new Set(selectedRules);
+	return UNIFIED_RULES.flatMap(rule => {
+		// A category selection takes precedence over stale or conflicting child selections.
+		if (selected.has(rule.name)) return [rule];
+		return (RULE_OPTIONS[rule.name] || []).filter(option => selected.has(option.name));
+	});
+}
+
 // Helper function to get outbounds based on selected rule names
 export function getOutbounds(selectedRuleNames) {
-	if (!selectedRuleNames || !Array.isArray(selectedRuleNames)) {
+	if (!Array.isArray(selectedRuleNames) || selectedRuleNames.length === 0) {
 		return [];
 	}
-	return UNIFIED_RULES
-		.filter(rule => selectedRuleNames.includes(rule.name))
-		.map(rule => rule.name);
+	return resolveSelectedRuleDefinitions(selectedRuleNames).map(rule => rule.name);
 }
 
 // Helper function to generate rules based on selected rule names
 export function generateRules(selectedRules = [], customRules = []) {
-	if (typeof selectedRules === 'string' && PREDEFINED_RULE_SETS[selectedRules]) {
-		selectedRules = PREDEFINED_RULE_SETS[selectedRules];
-	}
-
-	if (!selectedRules || selectedRules.length === 0) {
-		selectedRules = PREDEFINED_RULE_SETS.minimal;
-	}
-
-	const rules = [];
-
-	UNIFIED_RULES.forEach(rule => {
-		if (selectedRules.includes(rule.name)) {
-			rules.push({
-				site_rules: rule.site_rules,
-				ip_rules: rule.ip_rules,
-				domain_suffix: rule?.domain_suffix,
-				ip_cidr: rule?.ip_cidr,
-				outbound: rule.name
-			});
-		}
-	});
+	const rules = resolveSelectedRuleDefinitions(selectedRules).map(rule => ({
+		site_rules: rule.site_rules,
+		ip_rules: rule.ip_rules,
+		domain_suffix: rule?.domain_suffix,
+		ip_cidr: rule?.ip_cidr,
+		outbound: rule.name
+	}));
 
 	// Builders reuse this array, so generating rules must not change their priority order.
 	customRules.slice().reverse().forEach((rule) => {
@@ -78,26 +77,16 @@ export function generateRules(selectedRules = [], customRules = []) {
 }
 
 export function generateRuleSets(selectedRules = [], customRules = []) {
-	if (typeof selectedRules === 'string' && PREDEFINED_RULE_SETS[selectedRules]) {
-		selectedRules = PREDEFINED_RULE_SETS[selectedRules];
-	}
-
-	if (!selectedRules || selectedRules.length === 0) {
-		selectedRules = PREDEFINED_RULE_SETS.minimal;
-	}
-
-	const selectedRulesSet = new Set(selectedRules);
+	const ruleDefinitions = resolveSelectedRuleDefinitions(selectedRules);
 
 	const siteRuleSets = new Set();
 	const ipRuleSets = new Set();
 
 	const ruleSets = [];
 
-	UNIFIED_RULES.forEach(rule => {
-		if (selectedRulesSet.has(rule.name)) {
-			rule.site_rules.forEach(siteRule => siteRuleSets.add(siteRule));
-			rule.ip_rules.forEach(ipRule => ipRuleSets.add(ipRule));
-		}
+	ruleDefinitions.forEach(rule => {
+		rule.site_rules.forEach(siteRule => siteRuleSets.add(siteRule));
+		rule.ip_rules.forEach(ipRule => ipRuleSets.add(ipRule));
 	});
 
 	const site_rule_sets = Array.from(siteRuleSets).map(rule => ({
@@ -114,7 +103,7 @@ export function generateRuleSets(selectedRules = [], customRules = []) {
 		url: `${IP_RULE_SET_BASE_URL}${IP_RULE_SETS[rule]}`,
 	}));
 
-	if (!selectedRules.includes('Non-China')) {
+	if (!ruleDefinitions.some(rule => rule.name === 'Non-China')) {
 		site_rule_sets.push({
 			tag: 'geolocation-!cn',
 			type: 'remote',
@@ -151,28 +140,18 @@ export function generateRuleSets(selectedRules = [], customRules = []) {
 
 // Generate rule sets for Clash using .mrs format
 export function generateClashRuleSets(selectedRules = [], customRules = [], useMrs = true) {
-	if (typeof selectedRules === 'string' && PREDEFINED_RULE_SETS[selectedRules]) {
-		selectedRules = PREDEFINED_RULE_SETS[selectedRules];
-	}
-
-	if (!selectedRules || selectedRules.length === 0) {
-		selectedRules = PREDEFINED_RULE_SETS.minimal;
-	}
+	const ruleDefinitions = resolveSelectedRuleDefinitions(selectedRules);
 
 	// Determine format based on client compatibility
 	const format = useMrs ? 'mrs' : 'yaml';
 	const ext = useMrs ? '.mrs' : '.yaml';
 
-	const selectedRulesSet = new Set(selectedRules);
-
 	const siteRuleSets = new Set();
 	const ipRuleSets = new Set();
 
-	UNIFIED_RULES.forEach(rule => {
-		if (selectedRulesSet.has(rule.name)) {
-			rule.site_rules.forEach(siteRule => siteRuleSets.add(siteRule));
-			rule.ip_rules.forEach(ipRule => ipRuleSets.add(ipRule));
-		}
+	ruleDefinitions.forEach(rule => {
+		rule.site_rules.forEach(siteRule => siteRuleSets.add(siteRule));
+		rule.ip_rules.forEach(ipRule => ipRuleSets.add(ipRule));
 	});
 
 	const site_rule_providers = {};
@@ -201,7 +180,7 @@ export function generateClashRuleSets(selectedRules = [], customRules = [], useM
 	});
 
 	// Add Non-China rule set if not included
-	if (!selectedRules.includes('Non-China')) {
+	if (!ruleDefinitions.some(rule => rule.name === 'Non-China')) {
 		site_rule_providers['geolocation-!cn'] = {
 			type: 'http',
 			format: format,

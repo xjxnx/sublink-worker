@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { formLogicFn } from '../src/components/formLogic.js';
+import { RULE_OPTIONS, PREDEFINED_RULE_SETS } from '../src/config/index.js';
 
 describe('formLogic toString fix', () => {
   it('includes parseSurgeConfigInput definition in toString output', () => {
@@ -247,5 +248,90 @@ describe('subscription QR codes', () => {
     expect(data.shortenedLinks).toBeNull();
     expect(data.qrCode).toBe(currentQR);
     expect(data.qrCodeLabel).toBe('New Xray');
+  });
+});
+
+describe('rule category selection', () => {
+  const setup = () => {
+    const window = {
+      RULE_OPTIONS, PREDEFINED_RULE_SETS,
+      location: { origin: 'https://example.com', search: '' },
+      APP_TRANSLATIONS: {}
+    };
+    const initialize = new Function('window', 'document', 'fetch', 'setTimeout',
+      '(' + formLogicFn.toString() + ')(); return window.formData();');
+    const data = initialize(window, { querySelector: () => null }, async () => ({}), () => 1);
+    data.$refs = { ruleOptionsDialog: { showModal: vi.fn(), close: vi.fn() } };
+    data.selectedRules = ['Google'];
+    return data;
+  };
+  const children = RULE_OPTIONS['Social Media'].map(option => option.name);
+
+  it('selects the whole category with every service checked in its dialog', () => {
+    const data = setup();
+    data.toggleRuleCategory('Social Media', true);
+    expect(data.selectedRules).toEqual(['Google', 'Social Media']);
+    data.openRuleOptions('Social Media');
+    expect(data.ruleOptionsDraft).toEqual(children);
+    expect(data.getSelectedRuleOptionCount('Social Media')).toBe(0);
+  });
+
+  it.each([[children[0]], [children[0], children[2]], children].map(selected => ({ selected })))('keeps explicit selections separate: $selected', ({ selected }) => {
+    const data = setup();
+    data.toggleRuleCategory('Social Media', true);
+    data.openRuleOptions('Social Media');
+    data.ruleOptionsDraft = selected;
+    data.applyRuleOptions();
+    expect(data.selectedRules).toEqual(['Google', ...selected]);
+    expect(data.selectedPredefinedRule).toBe('custom');
+    expect(data.getSelectedRuleOptionCount('Social Media')).toBe(selected.length);
+    data.openRuleOptions('Social Media');
+    expect(data.ruleOptionsDraft).toEqual(selected);
+  });
+
+  it('leaves the category intact when editing an uncommitted draft', () => {
+    const data = setup();
+    data.toggleRuleCategory('Social Media', true);
+    data.openRuleOptions('Social Media');
+    data.ruleOptionsDraft = [children[0]];
+    expect(data.selectedRules).toEqual(['Google', 'Social Media']);
+    data.openRuleOptions('Social Media');
+    expect(data.ruleOptionsDraft).toEqual(children);
+  });
+
+  it('replaces individual selections with a category and can clear either mode', () => {
+    const data = setup();
+    data.selectedRules.push(...children);
+    data.toggleRuleCategory('Social Media', true);
+    expect(data.selectedRules).toEqual(['Google', 'Social Media']);
+    data.toggleRuleCategory('Social Media', false);
+    expect(data.selectedRules).toEqual(['Google']);
+    data.selectedRules.push(children[0]);
+    data.openRuleOptions('Social Media');
+    data.ruleOptionsDraft = [];
+    data.applyRuleOptions();
+    expect(data.selectedRules).toEqual(['Google']);
+  });
+
+  it('serializes and restores individual choices in conversion and subconverter links', async () => {
+    const data = setup();
+    data.input = 'vless://test';
+    data.openRuleOptions('Social Media');
+    data.ruleOptionsDraft = [children[0], children[2]];
+    data.applyRuleOptions();
+    await data.submitForm();
+    for (const value of [...Object.values(data.generatedLinks), data.getSubconverterUrl()]) {
+      expect(JSON.parse(new URL(value).searchParams.get('selectedRules'))).toEqual(data.selectedRules);
+    }
+    const restored = setup();
+    restored.populateFormFromUrl(new URL(data.generatedLinks.clash));
+    expect(restored.selectedRules).toEqual(data.selectedRules);
+    expect(restored.selectedPredefinedRule).toBe('custom');
+    restored.openRuleOptions('Social Media');
+    expect(restored.ruleOptionsDraft).toEqual([children[0], children[2]]);
+    restored.selectedPredefinedRule = 'comprehensive';
+    restored.applyPredefinedRule();
+    expect(restored.selectedRules).toEqual(PREDEFINED_RULE_SETS.comprehensive);
+    expect(restored.getSelectedRuleOptionCount('Social Media')).toBe(0);
   });
 });

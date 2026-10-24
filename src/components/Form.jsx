@@ -1,6 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource hono/jsx */
-import { PREDEFINED_RULE_SETS, UNIFIED_RULES } from '../config/index.js';
+import { PREDEFINED_RULE_SETS, UNIFIED_RULES, RULE_OPTIONS } from '../config/index.js';
 import { CustomRules } from './CustomRules.jsx';
 import { TextareaWithActions } from './TextareaWithActions.jsx';
 import { ValidatedTextarea } from './ValidatedTextarea.jsx';
@@ -51,6 +51,7 @@ export const Form = (props) => {
   const scriptContent = `
     window.APP_TRANSLATIONS = ${JSON.stringify(translations)};
     window.PREDEFINED_RULE_SETS = ${JSON.stringify(PREDEFINED_RULE_SETS)};
+    window.RULE_OPTIONS = ${JSON.stringify(RULE_OPTIONS)};
     window.APP_LANG = ${JSON.stringify(lang || 'zh-CN')};
     window.GENERAL_SETTINGS_PROTECTED = ${Boolean(props.generalSettingsProtected)};
     if (typeof __name === 'undefined') { var __name = function(fn) { return fn; }; }
@@ -174,19 +175,42 @@ export const Form = (props) => {
               </select>
             </div>
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {UNIFIED_RULES.map((rule) => (
-                <label class="flex items-center p-2.5 rounded-xl border border-gray-200/60 dark:border-gray-700/60 hover:border-primary-300 dark:hover:border-primary-700/60 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 cursor-pointer transition-all group">
+              {UNIFIED_RULES.map((rule, index) => (
+                <div class="flex items-center p-2.5 rounded-xl border border-gray-200/60 dark:border-gray-700/60 hover:border-primary-300 dark:hover:border-primary-700/60 hover:bg-primary-50/40 dark:hover:bg-primary-900/10 transition-all group">
                   <input
+                    id={`rule-category-${index}`}
                     type="checkbox"
                     value={rule.name}
-                    x-model="selectedRules"
-                    x-on:change="selectedPredefinedRule = 'custom'"
-                    class="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                    x-bind:checked={`selectedRules.includes(${JSON.stringify(rule.name)})`}
+                    x-effect={`$el.indeterminate = getSelectedRuleOptionCount(${JSON.stringify(rule.name)}) > 0`}
+                    x-on:change={`toggleRuleCategory(${JSON.stringify(rule.name)}, $el.checked)`}
+                    aria-label={t(`outboundNames.${rule.name}`)}
+                    class="shrink-0 w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
                   />
-                  <span class="ml-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                    {t(`outboundNames.${rule.name}`)}
-                  </span>
-                </label>
+                  {RULE_OPTIONS[rule.name] ? (
+                    <button
+                      type="button"
+                      x-on:click={`openRuleOptions(${JSON.stringify(rule.name)})`}
+                      class="flex-1 min-w-0 flex items-center gap-1.5 ml-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white cursor-pointer"
+                      aria-label={`${t('chooseRuleServices')}: ${t(`outboundNames.${rule.name}`)}`}
+                      aria-haspopup="dialog"
+                    >
+                      <span>{t(`outboundNames.${rule.name}`)}</span>
+                      <span class="flex-1 flex items-center justify-end gap-1.5">
+                        <span
+                          x-show={`getSelectedRuleOptionCount(${JSON.stringify(rule.name)}) > 0`}
+                          x-text={`getSelectedRuleOptionCount(${JSON.stringify(rule.name)}) + '/${RULE_OPTIONS[rule.name].length}'`}
+                          class="text-xs text-primary-600 dark:text-primary-400"
+                        ></span>
+                        <i class="fas fa-chevron-right text-xs text-gray-400" aria-hidden="true"></i>
+                      </span>
+                    </button>
+                  ) : (
+                    <label for={`rule-category-${index}`} class="flex-1 ml-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white cursor-pointer transition-colors">
+                      {t(`outboundNames.${rule.name}`)}
+                    </label>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -547,6 +571,41 @@ export const Form = (props) => {
           </div>
         </div>
       </div>
+
+      <dialog
+        x-ref="ruleOptionsDialog"
+        aria-labelledby="rule-options-title"
+        aria-describedby="rule-options-hint"
+        class="qr-dialog rounded-2xl p-5 sm:p-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-2xl"
+      >
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <h2 id="rule-options-title" class="font-semibold">
+            {UNIFIED_RULES.filter(rule => RULE_OPTIONS[rule.name]).map(rule => (
+              <span x-show={`ruleOptionsCategory === ${JSON.stringify(rule.name)}`}>{t(`outboundNames.${rule.name}`)}</span>
+            ))}
+          </h2>
+          <button type="button" x-on:click="$refs.ruleOptionsDialog.close()" class="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer" aria-label={t('close')}>
+            <i class="fas fa-times" aria-hidden="true"></i>
+          </button>
+        </div>
+        <p id="rule-options-hint" class="text-sm text-gray-500 dark:text-gray-400 mb-4">{t('ruleServicesHint')}</p>
+        <div class="flex items-center gap-3 mb-4">
+          <button type="button" x-on:click="ruleOptionsDraft = getRuleOptions(ruleOptionsCategory).map(option => option.name)" class="text-sm font-medium text-primary-600 dark:text-primary-400 cursor-pointer">{t('selectAllRules')}</button>
+          <button type="button" x-on:click="ruleOptionsDraft = []" class="text-sm font-medium text-gray-500 dark:text-gray-400 cursor-pointer">{t('clearRuleSelection')}</button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <template x-for="option in getRuleOptions(ruleOptionsCategory)" x-bind:key="option.name">
+            <label class="flex items-center gap-3 p-2.5 rounded-xl border border-gray-200/60 dark:border-gray-700/60 cursor-pointer hover:border-primary-300 dark:hover:border-primary-700">
+              <input type="checkbox" x-bind:value="option.name" x-model="ruleOptionsDraft" class="w-4 h-4 rounded text-primary-600 border-gray-300 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600" />
+              <span x-text="option.label" class="text-sm font-medium"></span>
+            </label>
+          </template>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+          <button type="button" x-on:click="$refs.ruleOptionsDialog.close()" class="btn-soft px-4 py-2 rounded-xl font-medium cursor-pointer">{t('cancelRuleSelection')}</button>
+          <button type="button" x-on:click="applyRuleOptions()" class="btn-primary px-4 py-2 rounded-xl font-medium text-white cursor-pointer">{t('applyRuleSelection')}</button>
+        </div>
+      </dialog>
 
       <dialog
         x-ref="qrDialog"

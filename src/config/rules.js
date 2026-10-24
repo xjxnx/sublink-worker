@@ -103,6 +103,21 @@ export const UNIFIED_RULES = [
 	}
 ];
 
+const INDIVIDUAL_RULE_CATEGORIES = new Set(['Social Media', 'Streaming', 'Gaming', 'Cryptocurrency']);
+
+export const RULE_OPTIONS = Object.fromEntries(UNIFIED_RULES
+	.filter(rule => INDIVIDUAL_RULE_CATEGORIES.has(rule.name))
+	.map(rule => [rule.name, rule.site_rules.map(site => ({
+		name: `${rule.name}:${site}`,
+		label: site,
+		parent: rule.name,
+		site_rules: [site],
+		ip_rules: []
+	}))]));
+
+export const RULE_OPTIONS_BY_NAME = Object.fromEntries(Object.values(RULE_OPTIONS)
+	.flat().map(option => [option.name, option]));
+
 // Rule names that should default to DIRECT instead of Node Select
 export const DIRECT_DEFAULT_RULES = new Set(['Private', 'Location:CN']);
 export const REJECT_ACTION_RULES = new Set(['Ad Block']);
