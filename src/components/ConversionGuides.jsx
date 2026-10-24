@@ -79,6 +79,13 @@ export const ConversionGuidePage = ({ guide, origin }) => {
                             <p class="leading-relaxed text-gray-600 dark:text-gray-400">{guide.intro}</p>
                             <a href="/#input" class="inline-flex rounded-xl bg-primary-600 px-5 py-3 text-white font-semibold hover:bg-primary-700">打开工具开始转换</a>
                         </header>
+                        {guide.overview && (
+                            <section class="space-y-3">
+                                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{guide.overview.title}</h2>
+                                <p class="leading-relaxed text-gray-600 dark:text-gray-400">{guide.overview.text}</p>
+                                <p class="rounded-xl bg-primary-50 dark:bg-primary-900/30 p-4 font-semibold leading-relaxed text-primary-700 dark:text-primary-300">{guide.overview.flow}</p>
+                            </section>
+                        )}
                         <section class="space-y-4">
                             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">操作步骤</h2>
                             <ol class="space-y-4 list-decimal ps-6">
@@ -90,6 +97,14 @@ export const ConversionGuidePage = ({ guide, origin }) => {
                                 ))}
                             </ol>
                         </section>
+                        {guide.image && (
+                            <figure class="space-y-3">
+                                <a href={guide.image.src} aria-label="查看填写示例大图">
+                                    <img src={guide.image.src} alt={guide.image.alt} width={guide.image.width} height={guide.image.height} loading="lazy" decoding="async" class="w-full h-auto rounded-2xl border border-gray-200 dark:border-gray-700" />
+                                </a>
+                                <figcaption class="text-sm leading-relaxed text-gray-600 dark:text-gray-400">{guide.image.caption}</figcaption>
+                            </figure>
+                        )}
                         <section class="space-y-3 min-w-0">
                             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{guide.example.title}</h2>
                             <p class="leading-relaxed text-gray-600 dark:text-gray-400">{guide.example.text}</p>

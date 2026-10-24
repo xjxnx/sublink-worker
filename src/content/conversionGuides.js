@@ -1,31 +1,47 @@
 export const CONVERSION_GUIDES = [
     {
-        path: '/guides/clash-to-singbox',
-        updatedAt: '2026-10-06',
-        title: 'Clash 订阅转 Sing-Box：在线转换与导入教程',
-        description: '将 Clash 订阅链接或 YAML 配置转换为 Sing-Box JSON。查看在线转换步骤、客户端导入方法、版本选择，以及节点和分流规则的兼容限制。',
-        summary: '将 Clash 订阅链接或 YAML 配置转换为 Sing-Box JSON，了解导入步骤和兼容限制。',
-        intro: 'Clash 订阅可以转换为 Sing-Box 配置。把订阅地址或 Clash YAML 内容粘贴到在线订阅转换工具，点击“转换”，再复制 Sing-Box 订阅链接。工具会读取支持的代理节点并生成目标配置；两种客户端的规则和专用字段需要分别检查。',
+        path: '/guides/chain-proxy',
+        previousPaths: ['/guides/clash-to-singbox'],
+        updatedAt: '2026-10-24',
+        title: '链式代理使用教程：用机场节点连接 SOCKS5 / HTTP 落地节点',
+        description: '使用本站配置链式代理：输入机场订阅，开启链式代理，添加 SOCKS5 / HTTP 落地节点，生成 Clash / Stash 订阅。附界面示例、前置代理选择、出口 IP 验证和常见问题排查。',
+        summary: '机场订阅作前置，SOCKS5 / HTTP 节点作落地，按图生成 Clash / Stash 链式代理配置。',
+        intro: '有一个使用原生家庭住宅 IP 的 SOCKS5 / HTTP 节点，想用作上网出口，却需要先经过机场节点才能连接？在本站，上方“输入源”填写机场订阅或节点，下方“链式代理 SOCKS5 / HTTP 节点”填写落地节点，即可生成 Clash / Stash 链式代理配置。导入客户端后，再分别选好前置节点和落地节点。',
+        overview: {
+            title: '先看懂连接顺序：机场负责中转，落地负责出口',
+            text: '前置节点是第一跳，用来连接落地服务器；落地节点是最后一跳，目标网站通常看到的是它的出口 IP。这适合已有可用机场线路、又想使用指定落地出口的场景。只有被规则分配到落地节点的流量才会走这条链路，直连规则仍然直连。',
+            flow: '你的设备 → 前置节点（机场） → 落地节点（SOCKS5 / HTTP） → 目标网站'
+        },
         steps: [
-            { title: '准备 Clash 订阅链接或 YAML', text: '使用可访问的 HTTP/HTTPS 订阅地址，或复制完整的 Clash YAML 配置。配置中的 proxies 应包含有效节点。直接粘贴配置时，一次输入一份完整文档。' },
-            { title: '粘贴到首页并选择分流规则', text: '在首页“输入源”中粘贴订阅或配置。需要调整分流时，展开“高级选项”选择预设规则或添加自定义规则。首次转换可保留默认设置。' },
-            { title: '生成并复制 Sing-Box 链接', text: '点击“转换”，在结果中复制 Sing-Box 订阅链接。需要查看 JSON 内容时，可打开生成的链接。确认节点、代理组和规则符合你的使用需求。' },
-            { title: '导入支持 Sing-Box 配置的客户端', text: '在客户端的远程配置或订阅管理中添加生成的链接，并更新配置。不同客户端的入口名称不同；只有客户端支持远程配置管理时才能直接添加链接，否则需下载 JSON 后按客户端说明导入。' }
+            { title: '在“输入源”填写机场订阅或前置节点', text: '打开本站首页，在上方大输入框粘贴可用的机场订阅地址，也可以每行填写一个 SS、VMess、VLESS、Trojan 等受支持的节点分享链接。先确认这些节点能在客户端正常使用。这里填写的是前置来源，不是 SOCKS5 / HTTP 落地节点。' },
+            { title: '在“高级选项”开启链式代理', text: '点击“高级选项”，在通用设置中打开“链式代理（仅 Clash Meta / Stash）”。如果站点为通用设置启用了密码保护，需要先解锁。开启后，上方输入源区域会出现单独的“链式代理 SOCKS5 / HTTP 节点”输入框。' },
+            { title: '在新增输入框填写落地节点', text: '把落地服务商提供的 socks://、socks5:// 或 http:// 节点链接粘贴到下方输入框，每行一个；HTTPS 代理也可使用 https:// 链接。节点可以包含明文或 Base64 编码的用户名和密码。这里只填写节点分享链接，不填写订阅地址；多个落地节点是供选择的不同出口，不会按行串成多跳。' },
+            { title: '点击“转换”，导入 Clash / Stash 订阅', text: '按需要选择分流规则，再点击“转换”。复制结果中的 Clash / Stash 链接，在使用 Mihomo（Clash Meta）内核的客户端或 Stash 中添加为远程订阅，更新并启用配置。Stash 用户应让 Stash 自行拉取该链接，本站会根据客户端请求适配配置。Sing-Box、Surge 和 Xray/V2Ray 输出不应用此链式代理设置。' },
+            { title: '在客户端分别选择前置和落地', text: '先在“🗺️ 前置代理”策略组里选一个可用的机场节点，再在“🚀 节点选择”或目标网站命中的业务策略组里，选下方输入框添加的落地节点。例如落地链接以 #SOCKS5-Exit 结尾，就选择 SOCKS5-Exit。仅选择前置节点不会启用落地出口；请确认业务策略最终指向落地节点。' },
+            { title: '检查目标流量的出口 IP', text: '让 IP 查询网站的流量也走选定的落地节点，然后查看出口是否为落地服务商提供的 IP；使用动态出口时，以服务商实际分配结果为准。同时查看客户端连接记录，确认目标请求命中了预期策略。转换生成链接只表示参数已准备好，不代表链路已连通。' }
         ],
+        image: {
+            src: '/images/guides/chain-proxy-input.png',
+            width: 1599,
+            height: 834,
+            alt: '本站链式代理填写示例：上方输入 SS 前置节点，下方输入 SOCKS5 落地节点，底部为转换与高级选项按钮',
+            caption: '填写位置如图：上方是前置节点，下方是落地节点。截图中的服务器地址和凭据已替换为示例；需先在“高级选项”开启链式代理，下方输入框才会显示。点击图片可查看大图。'
+        },
         example: {
-            title: '示例：一份可用于转换的 Clash YAML',
-            text: '下面的节点使用虚构域名和密码，仅演示输入格式。完整配置可包含更多节点；转换后在 Sing-Box 的 outbounds 中检查对应节点。',
-            code: 'proxies:\n  - name: Demo\n    type: ss\n    server: node.example.com\n    port: 8388\n    cipher: aes-128-gcm\n    password: demo-password'
+            title: '填写示例：一份前置订阅，两个可选落地出口',
+            text: '下面分为两个输入框，说明文字不要粘贴进去。example.com 域名、192.0.2.10 地址和账号密码均为演示值，需替换为自己的有效信息。# 后的名称用于在客户端识别落地节点；只用一个出口时填写一行即可。',
+            code: '【上方：输入源】\nhttps://subscription.example.com/your-subscription\n\n【下方：链式代理 SOCKS5 / HTTP 节点】\nsocks5://demo-user:demo-pass@192.0.2.10:1080#SOCKS5-Exit\nhttp://demo-user:demo-pass@exit.example.com:8080#HTTP-Exit'
         },
         sections: [
-            { title: 'Clash 转 Sing-Box 会保留哪些内容？', text: '工具解析能够识别的节点协议、服务器、端口和凭据，再构建 Sing-Box 配置。分组和分流由目标配置构建流程处理。Clash 的 proxy-providers、脚本和客户端专用设置不能假定会逐项迁移，转换后应检查生成的 JSON。' },
-            { title: 'Sing-Box 版本不匹配怎么办？', text: 'Sing-Box 不同核心版本的配置字段存在差异。转换接口支持 singbox_version 参数，例如在生成的 /singbox 链接中添加 &singbox_version=1.11 使用旧版配置模板，或添加 &singbox_version=1.12 使用新版模板。以客户端实际使用的核心版本和官方文档为准。' },
-            { title: '转换后的订阅会自动跟随源订阅更新吗？', text: '输入为订阅地址时，客户端再次请求生成的订阅会重新获取上游内容。如果输入的是粘贴的 YAML，保存的是当时的内容；上游变化后需要重新粘贴并生成链接。客户端何时刷新由它的订阅更新设置决定。' },
-            { title: '转换成功，但节点无法连接怎么办？', text: '先检查原订阅是否有效、节点凭据是否正确，再检查客户端的协议和传输方式支持。配置转换不会测试节点连通性，也不能增加客户端本身不具备的协议支持。' }
+            { title: '为什么要把前置和落地分开填写？', text: '本站会给下方输入的落地节点设置 dialer-proxy，指向“🗺️ 前置代理”策略组。上方来源中的普通节点仍保留原有用途。若把落地节点只放进上方来源，不能假定它会自动经过前置组；需要链式连接的 SOCKS5 / HTTP 节点应填在专用输入框里。' },
+            { title: '“🗺️ 前置代理”里没有可选节点怎么办？', text: '本站会从前置候选中排除 SOCKS5 / HTTP 类型以及名称以“直连”开头的节点，避免落地节点被选为自己的前置。请在上方提供有效的 SS、VLESS、Trojan 等其它受支持的节点，并更新订阅。如果使用的是自定义分组配置，还要确认业务策略组中可以选到落地节点。' },
+            { title: '能连接机场，但落地节点超时怎么办？', text: '先单独验证机场节点，再核对落地服务器地址、端口、账号、密码与服务状态。随后更换“🗺️ 前置代理”中的节点，确认该线路能够访问落地端口。若落地服务使用 IP 白名单，应按服务商要求放行前置节点的实际出口 IP。UDP 是否可用还取决于整条链路和客户端支持，不能只凭网页能打开来判断。' },
+            { title: '出口 IP 没变化，或仍显示机场 IP？', text: '检查目标网站命中的业务策略是否选中了落地节点，而不是机场节点或自动选择组。测试时也要让 IP 查询网站走同一落地策略；如果它命中直连规则，看到的是本地出口。修改选择后重新建立连接，并在客户端连接记录中核对实际命中的规则和策略。' },
+            { title: '账号密码里有特殊字符怎么填？', text: '明文链接中的用户名、密码若含 @、#、/ 等保留字符，应先做 URL 编码，例如 @ 写成 %40、# 写成 %23。也可以将 user:password 整段做 Base64 编码，写成 socks://dXNlcjpwYXNzd29yZA==@192.0.2.10:1080#SOCKS5-Exit。Base64 只是编码，不会保护密码。' },
+            { title: '更新订阅或更换落地账号后要做什么？', text: '上方填写订阅地址时，更新生成的配置会重新获取上游，或由客户端刷新远程节点源；直接粘贴的节点不会自动变化。落地地址、账号或密码改变后，需要回到本站修改下方输入框，重新转换并替换客户端订阅链接。生成的链接和二维码可能包含访问凭据，请仅分享给获授权的使用者。' }
         ],
         references: [
-            { title: 'Sing-Box 配置文档', url: 'https://sing-box.sagernet.org/configuration/' },
-            { title: 'Mihomo 代理配置文档', url: 'https://wiki.metacubex.one/config/proxies/' }
+            { title: 'Mihomo dialer-proxy 文档：通过订阅节点连接落地', url: 'https://wiki.metacubex.one/config/proxies/dialer-proxy/' }
         ]
     },
     {

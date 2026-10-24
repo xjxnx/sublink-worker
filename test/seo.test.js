@@ -174,7 +174,8 @@ describe('SEO: /sitemap.xml route', () => {
         for (const block of blocks) {
             const url = block.match(/<loc>(.*?)<\/loc>/)[1];
             const lastmod = block.match(/<lastmod>(.*?)<\/lastmod>/)?.[1];
-            expect(lastmod).toBe(new URL(url).pathname === '/' ? '2026-10-22' : '2026-10-06');
+            const expectedDate = new URL(url).pathname === '/guides/merge-subscriptions' ? '2026-10-06' : '2026-10-24';
+            expect(lastmod).toBe(expectedDate);
             const html = await (await app.request(url)).text();
             const schema = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
             const page = schema['@graph'].find(item => item['@type'] === 'WebPage');
@@ -356,6 +357,14 @@ describe('SEO: visible overview and conversion guides', () => {
     it('returns 404 for unknown guides', async () => {
         expect((await createTestApp().request(`${ORIGIN}/guides/unknown`)).status).toBe(404);
     });
+
+    it('redirects the replaced tutorial to the chain proxy guide in one hop', async () => {
+        const app = createTestApp({ forceHttps: true });
+        const response = await app.request('http://example.com/guides/clash-to-singbox/?lang=ru&utm_source=docs');
+        expect(response.status).toBe(308);
+        expect(response.headers.get('location')).toBe('https://example.com/guides/chain-proxy?utm_source=docs');
+        expect((await app.request(response.headers.get('location'))).status).toBe(200);
+    });
 });
 
 describe('SEO: server-rendered usage guide', () => {
@@ -398,7 +407,7 @@ describe('SEO: private endpoint indexing directives', () => {
         expect(await (await app.request(`${ORIGIN}/robots.txt`)).text()).toContain('Disallow: /track-input');
     });
 
-    it.each(['/', '/?lang=en-US', '/guides/clash-to-singbox', '/guides/merge-subscriptions', '/sitemap.xml', '/robots.txt'])('keeps %s available for indexing', async (path) => {
+    it.each(['/', '/?lang=en-US', '/guides/chain-proxy', '/guides/merge-subscriptions', '/sitemap.xml', '/robots.txt'])('keeps %s available for indexing', async (path) => {
         const response = await createTestApp().request(`${ORIGIN}${path}`);
         expect(response.status).toBe(200);
         expect(response.headers.get('X-Robots-Tag')).toBeNull();

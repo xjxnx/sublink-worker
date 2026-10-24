@@ -9,7 +9,8 @@ const isLoopback = (hostname) => hostname === 'localhost' || hostname.endsWith('
 export function canonicalRedirect(requestUrl, forceHttps) {
     const url = new URL(requestUrl);
     const guidePath = url.pathname.replace(/\/$/, '');
-    const isGuide = CONVERSION_GUIDES.some(guide => guide.path === guidePath);
+    const guide = CONVERSION_GUIDES.find(guide => guide.path === guidePath || guide.previousPaths?.includes(guidePath));
+    const isGuide = Boolean(guide);
     if (!PUBLIC_PAGES.has(url.pathname) && !isGuide) return null;
 
     // Subscription signatures include the origin, so redirects are limited to public documents.
@@ -18,7 +19,7 @@ export function canonicalRedirect(requestUrl, forceHttps) {
     }
 
     if (isGuide) {
-        url.pathname = guidePath;
+        url.pathname = guide.path;
         url.searchParams.delete('lang');
     }
 
