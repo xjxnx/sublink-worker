@@ -117,6 +117,7 @@ export const formLogicFn = (t) => {
             shortenedLinks: null,
             qrCode: {},
             qrCodeLabel: '',
+            qrCodeRequestId: 0,
             shortening: false,
             customShortCode: '',
             parsingUrl: false,
@@ -575,32 +576,61 @@ export const formLogicFn = (t) => {
                 } catch {}
             },
 
-            showQRCode(key, label) {
-                this.qrCodeLabel = label;
-                if (typeof window.qrcode !== 'function') {
-                    this.qrCode = { error: window.APP_TRANSLATIONS.qrCodeUnavailable };
-                } else {
-                    try {
-                        const code = window.qrcode(0, 'M');
-                        code.addData((this.shortenedLinks || this.generatedLinks)[key]);
-                        code.make();
-                        const svg = code.createSvgTag({ cellSize: 4, margin: 16, scalable: true });
-                        this.qrCode = { src: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) };
-                    } catch {
-                        this.qrCode = { error: window.APP_TRANSLATIONS.tryShortLinks };
-                    }
-                }
-                this.$refs.qrDialog.showModal();
+            createQRCode(url) {
+                const code = window.qrcode(0, 'M');
+                code.addData(url);
+                code.make();
+                const svg = code.createSvgTag({ cellSize: 4, margin: 16, scalable: true });
+                return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
             },
 
-            async shortenLinks() {
+            async showQRCode(key, label) {
+                const requestId = ++this.qrCodeRequestId;
+                const links = this.generatedLinks;
+                const url = (this.shortenedLinks || links)?.[key];
+                this.qrCodeLabel = label;
+                this.qrCode = {};
+                if (!this.$refs.qrDialog.open) this.$refs.qrDialog.showModal();
+                if (!url || typeof window.qrcode !== 'function') {
+                    this.qrCode = { error: window.APP_TRANSLATIONS.qrCodeUnavailable };
+                    return;
+                }
+                try {
+                    this.qrCode = { src: this.createQRCode(url) };
+                } catch (error) {
+                    if (!String(error).includes('code length overflow') || this.shortenedLinks) {
+                        this.qrCode = { error: window.APP_TRANSLATIONS.qrCodeUnavailable };
+                        return;
+                    }
+                    // Large node keys can exceed QR capacity even for a single node.
+                    this.qrCode = { loading: true };
+                    await this.shortenLinks({ silent: true });
+                    if (requestId !== this.qrCodeRequestId || links !== this.generatedLinks) return;
+                    if (!this.shortenedLinks?.[key]) {
+                        this.qrCode = { error: window.APP_TRANSLATIONS.shortenFailed };
+                        return;
+                    }
+                    try {
+                        this.qrCode = {
+                            src: this.createQRCode(this.shortenedLinks[key]),
+                            message: window.APP_TRANSLATIONS.qrCodeUsingShortLink
+                        };
+                    } catch {
+                        this.qrCode = { error: window.APP_TRANSLATIONS.qrCodeUnavailable };
+                    }
+                }
+            },
+
+            async shortenLinks({ silent = false } = {}) {
+                if (this.shortening) return;
                 // Check if links are already shortened
                 if (this.shortenedLinks) {
                     alert(window.APP_TRANSLATIONS.alreadyShortened);
                     return;
                 }
 
-                if (!this.generatedLinks) {
+                const generatedLinks = this.generatedLinks;
+                if (!generatedLinks) {
                     return;
                 }
 
@@ -614,7 +644,7 @@ export const formLogicFn = (t) => {
                     let isFirstRequest = true;
 
                     // Shorten each link type
-                    for (const [type, url] of Object.entries(this.generatedLinks)) {
+                    for (const [type, url] of Object.entries(generatedLinks)) {
                         try {
                             let apiUrl = `${origin}/shorten-v2?url=${encodeURIComponent(url)}`;
 
@@ -652,10 +682,10 @@ export const formLogicFn = (t) => {
                         }
                     }
 
-                    this.shortenedLinks = shortened;
+                    if (this.generatedLinks === generatedLinks) this.shortenedLinks = shortened;
                 } catch (error) {
                     console.error('Error shortening links:', error);
-                    alert(window.APP_TRANSLATIONS.shortenFailed);
+                    if (!silent) alert(window.APP_TRANSLATIONS.shortenFailed);
                 } finally {
                     this.shortening = false;
                 }

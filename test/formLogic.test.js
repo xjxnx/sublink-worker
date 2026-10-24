@@ -153,3 +153,99 @@ describe('general settings form access', () => {
     expect(alert).toHaveBeenCalledWith('expired');
   });
 });
+
+describe('subscription QR codes', () => {
+  const setup = () => {
+    const encodedUrls = [];
+    const window = {
+      APP_TRANSLATIONS: {
+        qrCodeUnavailable: 'QR unavailable',
+        qrCodeUsingShortLink: 'Using a short link',
+        shortenFailed: 'Shortening failed'
+      },
+      location: { origin: 'https://example.com' },
+      qrcode: vi.fn(() => {
+        let value;
+        return {
+          addData: url => { value = url; encodedUrls.push(url); },
+          make: () => {
+            if (value.length > 2331) throw 'code length overflow. (28000>18672)';
+          },
+          createSvgTag: () => '<svg></svg>'
+        };
+      })
+    };
+    const fetchMock = vi.fn(async () => ({ ok: true, text: async () => 'shared-code' }));
+    const alert = vi.fn();
+    const initialize = new Function('window', 'fetch', 'alert',
+      '(' + formLogicFn.toString() + ')(); return window.formData();');
+    const data = initialize(window, fetchMock, alert);
+    const dialog = { open: false, showModal: vi.fn(() => { dialog.open = true; }) };
+    data.$refs = { qrDialog: dialog };
+    const node = 'vless://test@node.example:443?security=reality&pqv=' + 'a'.repeat(3500);
+    const query = new URLSearchParams({ config: node, selectedRules: 'balanced' }).toString();
+    data.generatedLinks = Object.fromEntries(['xray', 'singbox', 'clash', 'surge'].map(type =>
+      [type, `https://example.com/${type}?${query}`]));
+    return { data, window, fetchMock, alert, dialog, encodedUrls, node };
+  };
+
+  it.each(['xray', 'singbox', 'clash', 'surge'])('uses a short link when a large node exceeds QR capacity (%s)', async key => {
+    const { data, fetchMock, encodedUrls, node } = setup();
+    const pending = data.showQRCode(key, key);
+    expect(data.qrCode.loading).toBe(true);
+    await pending;
+    const prefixes = { xray: 'x', singbox: 'b', clash: 'c', surge: 's' };
+    expect(encodedUrls.at(-1)).toBe(`https://example.com/${prefixes[key]}/shared-code`);
+    expect(data.qrCode.src).toMatch(/^data:image\/svg\+xml/);
+    expect(data.qrCode.message).toBe('Using a short link');
+    expect(data.shortening).toBe(false);
+    for (const [request] of fetchMock.mock.calls) {
+      const original = new URL(new URL(request).searchParams.get('url'));
+      expect(original.searchParams.get('config')).toBe(node);
+    }
+  });
+
+  it('encodes ordinary long URLs and existing short URLs without storage requests', async () => {
+    const { data, fetchMock, encodedUrls, dialog } = setup();
+    data.generatedLinks = { xray: 'https://example.com/xray?config=vless%3A%2F%2Ftest' };
+    await data.showQRCode('xray', 'Xray');
+    expect(encodedUrls.at(-1)).toBe(data.generatedLinks.xray);
+    data.shortenedLinks = { xray: 'https://example.com/x/existing' };
+    await data.showQRCode('xray', 'Xray');
+    expect(encodedUrls.at(-1)).toBe(data.shortenedLinks.xray);
+    expect(data.qrCode.src).toBeTruthy();
+    expect(dialog.showModal).toHaveBeenCalledTimes(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('shows storage failures in the dialog and allows retrying', async () => {
+    const { data, fetchMock, alert } = setup();
+    fetchMock.mockResolvedValueOnce({ ok: false });
+    await data.showQRCode('xray', 'Xray');
+    expect(data.qrCode).toEqual({ error: 'Shortening failed' });
+    expect(data.shortening).toBe(false);
+    expect(alert).not.toHaveBeenCalled();
+    await data.showQRCode('xray', 'Xray');
+    expect(data.qrCode.src).toBeTruthy();
+  });
+
+  it.each(['missing', 'broken'])('does not treat a %s QR library as a capacity error', async state => {
+    const { data, window, fetchMock } = setup();
+    window.qrcode = state === 'missing' ? undefined : () => { throw new Error('broken renderer'); };
+    await data.showQRCode('xray', 'Xray');
+    expect(data.qrCode).toEqual({ error: 'QR unavailable' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('does not overwrite a newer conversion with old shortened links', async () => {
+    const { data } = setup();
+    const pending = data.showQRCode('xray', 'Xray');
+    data.generatedLinks = { xray: 'https://example.com/xray?config=new-node' };
+    await data.showQRCode('xray', 'New Xray');
+    const currentQR = data.qrCode;
+    await pending;
+    expect(data.shortenedLinks).toBeNull();
+    expect(data.qrCode).toBe(currentQR);
+    expect(data.qrCodeLabel).toBe('New Xray');
+  });
+});

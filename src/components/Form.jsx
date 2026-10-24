@@ -39,7 +39,7 @@ export const Form = (props) => {
     optional: t('optional'),
     customShortCodePlaceholder: t('customShortCodePlaceholder'),
     showFullLinks: t('showFullLinks'),
-    tryShortLinks: t('tryShortLinks'),
+    qrCodeUsingShortLink: t('qrCodeUsingShortLink'),
     qrCodeUnavailable: t('qrCodeUnavailable'),
     settingsWrongPassword: t('settingsWrongPassword'),
     settingsTooManyAttempts: t('settingsTooManyAttempts'),
@@ -500,6 +500,7 @@ export const Form = (props) => {
                       type="button"
                       data-label={t(field.labelKey)}
                       x-on:click={`showQRCode('${field.key}', $el.dataset.label)`}
+                      x-bind:disabled="shortening"
                       class="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/30 dark:hover:text-primary-400 transition-colors cursor-pointer"
                       title={t('showQRCode')}
                       aria-label={`${t(field.labelKey)}: ${t('showQRCode')}`}
@@ -571,7 +572,12 @@ export const Form = (props) => {
           alt={t('scanQRCode')}
           class="w-full bg-white rounded-lg"
         />
+        <p x-show="qrCode.loading" class="text-sm text-gray-500 dark:text-gray-400 py-8 text-center" role="status">
+          <i class="fas fa-spinner fa-spin mr-2" aria-hidden="true"></i>
+          {t('shortening')}
+        </p>
         <p x-show="qrCode.error" x-text="qrCode.error" class="text-sm text-amber-600 dark:text-amber-400 py-8 text-center" role="status"></p>
+        <p x-show="qrCode.message" x-text="qrCode.message" class="text-sm text-gray-500 dark:text-gray-400 mt-4 text-center" role="status"></p>
         <p x-show="qrCode.src" class="text-sm text-center text-gray-500 dark:text-gray-400 mt-4">{t('scanQRCode')}</p>
       </dialog>
 
