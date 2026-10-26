@@ -174,7 +174,10 @@ describe('SEO: /sitemap.xml route', () => {
         for (const block of blocks) {
             const url = block.match(/<loc>(.*?)<\/loc>/)[1];
             const lastmod = block.match(/<lastmod>(.*?)<\/lastmod>/)?.[1];
-            const expectedDate = new URL(url).pathname === '/guides/merge-subscriptions' ? '2026-10-06' : '2026-10-24';
+            const expectedDate = {
+                '/guides/merge-subscriptions': '2026-10-06',
+                '/guides/chain-proxy': '2026-10-26'
+            }[new URL(url).pathname] || '2026-10-24';
             expect(lastmod).toBe(expectedDate);
             const html = await (await app.request(url)).text();
             const schema = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);

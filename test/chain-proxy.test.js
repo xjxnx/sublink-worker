@@ -7,7 +7,8 @@ import { MemoryKVAdapter } from '../src/adapters/kv/memoryKv.js';
 import { encodeBase64 } from '../src/utils.js';
 import { formLogicFn } from '../src/components/formLogic.js';
 
-const GROUP = '🗺️ 前置代理';
+const GROUP_PREFIX = '🗺️ 前置代理';
+const GROUP = `${GROUP_PREFIX}-SOCKS`;
 const NODE = 'trojan://secret@node.example.com:443#Japan';
 const SOCKS = 'socks://dXNlcjpwYXNzd29yZA@192.0.2.1:45001#SOCKS';
 const build = (input = NODE, chainInput = SOCKS, enabled = true) => {
@@ -55,16 +56,74 @@ describe('SOCKS / HTTP chain proxy URIs', () => {
 });
 
 describe('Clash / Stash chain proxy output', () => {
-    it('adds a protocol-filtered pool and chained nodes exactly once, including selector membership', async () => {
+    it('adds an independent protocol-filtered pool per chained node exactly once, including selector membership', async () => {
         const builder = build(NODE, `${SOCKS}\nhttps://user:pass@http.example.com:443?tls=true&sni=tls.example.com#HTTP`);
         const config = yaml.load(await builder.build());
         expect(config['proxy-groups'].find(g => g.name === GROUP)).toEqual({
             name: GROUP, type: 'select', 'include-all': true, filter: '^(?!直连).*', 'exclude-type': 'Socks5|Http'
         });
+        expect(config['proxy-groups'].find(g => g.name === `${GROUP_PREFIX}-HTTP`)).toEqual({
+            name: `${GROUP_PREFIX}-HTTP`, type: 'select', 'include-all': true, filter: '^(?!直连).*', 'exclude-type': 'Socks5|Http'
+        });
         expect(config.proxies.find(p => p.type === 'socks5')).toMatchObject({ 'dialer-proxy': GROUP, username: 'user' });
-        expect(config.proxies.find(p => p.type === 'http')).toMatchObject({ 'dialer-proxy': GROUP, tls: true, sni: 'tls.example.com' });
+        expect(config.proxies.find(p => p.type === 'http')).toMatchObject({ 'dialer-proxy': `${GROUP_PREFIX}-HTTP`, tls: true, sni: 'tls.example.com' });
         expect(config.proxies.find(p => p.type === 'trojan')['dialer-proxy']).toBeUndefined();
         expect(config['proxy-groups'].find(g => g.name === '🚀 节点选择').proxies).toEqual(expect.arrayContaining(['SOCKS', 'HTTP']));
+        expect(yaml.load(builder.formatConfig())).toEqual(config);
+    });
+
+    it.each(['mihomo', 'Stash'])('names %s pools after each exit, truncating long names to eight characters', async (ua) => {
+        const names = ['美国自建', 'na.c740b4112c1f1ecf.example.com新加坡', '住宅代理节点测试名称', '😀abcdefg额外'];
+        const builder = build(NODE, names.map((name, index) => `${index % 2 ? 'http' : 'socks5'}://exit${index}.example.com:1080#${encodeURIComponent(name)}`).join('\n'));
+        builder.userAgent = ua;
+        const config = yaml.load(await builder.build());
+        const groupNames = ['美国自建', 'na.c740b', '住宅代理节点测试', '😀abcdefg'].map(name => `${GROUP_PREFIX}-${name}`);
+        names.forEach((name, index) => {
+            expect(config.proxies.find(proxy => proxy.name === name)['dialer-proxy']).toBe(groupNames[index]);
+            const group = config['proxy-groups'].find(group => group.name === groupNames[index]);
+            expect(group).toMatchObject({ type: 'select' });
+            if (ua === 'Stash') expect(group.proxies).toEqual(['Japan']);
+            else expect(group['include-all']).toBe(true);
+        });
+        expect(config['proxy-groups'].filter(group => group.name.startsWith(GROUP_PREFIX))).toHaveLength(names.length);
+        expect(yaml.load(builder.formatConfig())).toEqual(config);
+    });
+
+    it('keeps truncated and duplicate names independent while omitting duplicate nodes', async () => {
+        const builder = build(NODE, [
+            'socks5://first.example.com:1080#abcdefgh-first',
+            'http://second.example.com:8080#abcdefgh-second',
+            'socks5://third.example.com:1080#abcdefgh-first',
+            'socks5://first.example.com:1080#abcdefgh-first'
+        ].join('\n'));
+        const config = yaml.load(await builder.build());
+        const exits = config.proxies.filter(proxy => proxy['dialer-proxy']);
+        expect(exits).toHaveLength(3);
+        expect(exits.map(proxy => proxy['dialer-proxy'])).toEqual([
+            `${GROUP_PREFIX}-abcdefgh`, `${GROUP_PREFIX}-abcdefgh-2`, `${GROUP_PREFIX}-abcdefgh-3`
+        ]);
+        expect(config['proxy-groups'].filter(group => group.name.startsWith(GROUP_PREFIX))).toHaveLength(3);
+        expect(yaml.load(builder.formatConfig())).toEqual(config);
+    });
+
+    it.each(['mihomo', 'Stash'])('keeps repeated %s builds identical without duplicating exits or pools', async (ua) => {
+        const builder = build(NODE, `${SOCKS}\nhttp://http.example.com:8080#SOCKS`);
+        builder.userAgent = ua;
+        const first = yaml.load(await builder.build());
+        expect(first.proxies).toHaveLength(3);
+        expect(first['proxy-groups'].filter(group => group.name.startsWith(GROUP_PREFIX))).toHaveLength(2);
+        expect(yaml.load(await builder.build())).toEqual(first);
+        expect(yaml.load(builder.formatConfig())).toEqual(first);
+    });
+
+    it('avoids collisions with existing proxy and group names', async () => {
+        const poolName = `${GROUP_PREFIX}-abcdefgh`;
+        const builder = build(`trojan://secret@node.example.com:443#${encodeURIComponent(poolName)}`, 'socks5://exit.example.com:1080#abcdefghExit');
+        builder.config['proxy-groups'] = [{ name: `${poolName}-2`, type: 'select', proxies: ['DIRECT'] }];
+        const config = yaml.load(await builder.build());
+        expect(config.proxies.find(proxy => proxy.type === 'socks5')['dialer-proxy']).toBe(`${poolName}-3`);
+        expect(config['proxy-groups'].find(group => group.name === `${poolName}-2`).proxies).toEqual(['DIRECT']);
+        expect(config['proxy-groups'].find(group => group.name === `${poolName}-3`)['include-all']).toBe(true);
         expect(yaml.load(builder.formatConfig())).toEqual(config);
     });
 
@@ -79,12 +138,27 @@ describe('Clash / Stash chain proxy output', () => {
         expect(local.proxies.every(p => !p['dialer-proxy'])).toBe(true);
     });
 
+    it('preserves imported chain references when generating separate pools for new exits', async () => {
+        const config = yaml.load(await build(`proxies:
+  - {name: Existing, type: socks5, server: existing.example.com, port: 1080, dialer-proxy: '${GROUP_PREFIX}'}
+proxy-groups:
+  - {name: '${GROUP_PREFIX}', type: select, proxies: [DIRECT]}`).build());
+        expect(config.proxies.find(proxy => proxy.name === 'Existing')['dialer-proxy']).toBe(GROUP_PREFIX);
+        expect(config['proxy-groups'].find(group => group.name === GROUP_PREFIX).proxies).toEqual(['DIRECT']);
+        expect(config.proxies.find(proxy => proxy.name === 'SOCKS')['dialer-proxy']).toBe(GROUP);
+        expect(config['proxy-groups'].find(group => group.name === GROUP)['include-all']).toBe(true);
+        expect(config['proxy-groups'].filter(group => group.name.startsWith(GROUP_PREFIX))).toHaveLength(2);
+    });
+
     it('resolves remote subscriptions for Stash and excludes SOCKS / HTTP through explicit membership', async () => {
         vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('proxies:\n  - {name: SS, type: ss, server: ss.example.com, port: 443, cipher: aes-128-gcm, password: test}\n  - {name: HTTP, type: http, server: h.example.com, port: 8080}\n  - {name: SOCKS, type: socks5, server: s.example.com, port: 1080}', { headers: { 'content-type': 'text/yaml' } }));
         const builder = build('https://subscription.example.com/nodes');
         builder.userAgent = 'Stash/3';
         const config = yaml.load(await builder.build());
-        expect(config['proxy-groups'].find(g => g.name === GROUP)).toEqual({ name: GROUP, type: 'select', proxies: ['SS'] });
+        const exit = config.proxies.find(proxy => proxy.server === '192.0.2.1');
+        expect(exit.name).toBe('SOCKS 2');
+        expect(exit['dialer-proxy']).toBe(`${GROUP} 2`);
+        expect(config['proxy-groups'].find(g => g.name === exit['dialer-proxy'])).toEqual({ name: `${GROUP} 2`, type: 'select', proxies: ['SS'] });
         expect(config.proxies.filter(p => ['http', 'socks5'].includes(p.type))).toHaveLength(3);
         expect(config['proxy-providers']).toBeUndefined();
     });
@@ -93,7 +167,7 @@ describe('Clash / Stash chain proxy output', () => {
         const disabled = yaml.load(await build(NODE, 'invalid', false).build());
         const standard = yaml.load(await new ClashConfigBuilder(NODE, 'minimal', [], null, 'zh-CN', 'mihomo').build());
         expect(disabled).toEqual(standard);
-        expect(yaml.load(await build(NODE, '').build())['proxy-groups'].some(g => g.name === GROUP)).toBe(true);
+        expect(yaml.load(await build(NODE, '').build())['proxy-groups'].some(g => g.name.startsWith(GROUP_PREFIX))).toBe(false);
     });
 
     it('preserves leading zeroes in password strings after YAML serialization', async () => {
@@ -117,10 +191,12 @@ describe('Clash / Stash chain proxy output', () => {
     it('decodes a Base64 node list and coexists with multi-port groups and imported groups', async () => {
         const builder = build(`${NODE}\n`, encodeBase64(`${SOCKS}\nhttp://server:8080#HTTP`));
         builder.multiPortOptions = { enabled: true, basePort: 20000, count: 2 };
-        builder.config['proxy-groups'] = [{ name: GROUP, type: 'select', proxies: ['DIRECT'] }];
+        builder.config['proxy-groups'] = [{ name: '自定义', type: 'select', proxies: ['DIRECT'] }];
         const config = yaml.load(await builder.build());
-        expect(config.proxies.filter(p => p['dialer-proxy'] === GROUP)).toHaveLength(2);
+        expect(config.proxies.filter(p => p['dialer-proxy']?.startsWith(GROUP_PREFIX))).toHaveLength(2);
         expect(config['proxy-groups'].filter(g => g.name === GROUP)).toHaveLength(1);
+        expect(config['proxy-groups'].filter(g => g.name === `${GROUP_PREFIX}-HTTP`)).toHaveLength(1);
+        expect(config['proxy-groups'].find(g => g.name === '自定义').proxies).toEqual(['DIRECT']);
         expect(config.listeners).toHaveLength(2);
         expect(config['proxy-groups'].find(g => g.name === GROUP).proxies).toBeUndefined();
         expect(yaml.load(builder.formatConfig())).toEqual(config);
@@ -130,7 +206,7 @@ describe('Clash / Stash chain proxy output', () => {
         const response = await createTestApp().request(`https://example.com/clash?${new URLSearchParams({ config: NODE, chain_proxy: 'true', chain_proxy_input: 'https://user:secret@server:99999' })}`);
         expect(response.status).toBe(400);
         expect(await response.text()).not.toContain('secret');
-        await expect(build(NODE, `socks://server:1080#${encodeURIComponent(GROUP)}`).build()).rejects.toThrow(/reserved/);
+        await expect(build(NODE, `socks://server:1080#${encodeURIComponent(GROUP_PREFIX)}`).build()).rejects.toThrow(/reserved/);
     });
 
     it.each(['mihomo', 'Stash'])('generates %s YAML through both full and shortened links', async (ua) => {

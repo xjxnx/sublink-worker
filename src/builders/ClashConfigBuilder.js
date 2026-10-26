@@ -183,6 +183,8 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
         this.externalController = externalController;
         this.externalUiDownloadUrl = externalUiDownloadUrl;
         this.multiPortOptions = multiPortOptions;
+        this.chainProxies = [];
+        this.chainProxyGroupNames = [];
     }
 
     /**
@@ -263,6 +265,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
             .map(line => line.trim()).filter(Boolean)
             .flatMap(line => tryDecodeSubscriptionLines(line))
             .map(line => ({ ...parseSocksHttp(line), 'dialer-proxy': CHAIN_PROXY_GROUP }));
+        this.chainProxyItems = new WeakSet(chainItems);
         return [...items, ...chainItems];
     }
 
@@ -273,8 +276,8 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
     convertProxy(proxy) {
         switch (proxy.type) {
             case 'socks':
-            case 'http':
-                return {
+            case 'http': {
+                const convertedProxy = {
                     name: proxy.tag,
                     type: proxy.type === 'socks' ? 'socks5' : 'http',
                     server: proxy.server,
@@ -287,6 +290,9 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     ...(proxy.tls?.insecure !== undefined ? { 'skip-cert-verify': proxy.tls.insecure } : {}),
                     ...(proxy['dialer-proxy'] ? { 'dialer-proxy': proxy['dialer-proxy'] } : {})
                 };
+                if (this.chainProxyItems?.has(proxy)) this.chainProxies.push(convertedProxy);
+                return convertedProxy;
+            }
             case 'shadowsocks':
                 return {
                     name: proxy.tag,
@@ -471,6 +477,9 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
             isSame: (a = {}, b = {}) => {
                 const { name: _name, ...restOfProxy } = b;
                 const { name: __name, ...restOfExisting } = a;
+                // Assigned pool names must not change node identity when the builder is reused.
+                if (this.chainProxies.includes(a)) restOfExisting['dialer-proxy'] = CHAIN_PROXY_GROUP;
+                if (this.chainProxies.includes(b)) restOfProxy['dialer-proxy'] = CHAIN_PROXY_GROUP;
                 return JSON.stringify(restOfProxy) === JSON.stringify(restOfExisting);
             }
         });
@@ -821,20 +830,35 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
             if (this.getProxies().some(proxy => proxy.name === CHAIN_PROXY_GROUP)) {
                 throw new InvalidConfigError(`Proxy name "${CHAIN_PROXY_GROUP}" is reserved for the chain proxy group`);
             }
-            this.config['proxy-groups'] = (this.config['proxy-groups'] || []).filter(group => group.name !== CHAIN_PROXY_GROUP);
-            this.config['proxy-groups'].push({
-                name: CHAIN_PROXY_GROUP,
-                type: 'select',
-                ...(this.isStashClient() ? {
-                    // Explicit membership also keeps the chain acyclic on clients without exclude-type.
-                    proxies: this.getProxies()
-                        .filter(proxy => !['socks', 'socks5', 'http'].includes(String(proxy.type).toLowerCase()) && !proxy.name.startsWith('直连'))
-                        .map(proxy => proxy.name)
-                } : {
-                    'include-all': true,
-                    filter: '^(?!直连).*',
-                    'exclude-type': 'Socks5|Http'
-                })
+            this.config['proxy-groups'] = (this.config['proxy-groups'] || []).filter(group => !this.chainProxyGroupNames.includes(group.name));
+            this.chainProxyGroupNames = [];
+            const usedNames = new Set([
+                ...this.getProxies().map(proxy => proxy.name),
+                ...this.config['proxy-groups'].map(group => group.name)
+            ]);
+            this.chainProxies.filter(proxy => this.getProxies().includes(proxy)).forEach(proxy => {
+                const baseName = `${CHAIN_PROXY_GROUP}-${Array.from(proxy.name).slice(0, 8).join('')}`;
+                let name = baseName;
+                let suffix = 2;
+                // Truncated names can collide, but each exit needs its own independently selectable pool.
+                while (usedNames.has(name)) name = `${baseName}-${suffix++}`;
+                usedNames.add(name);
+                proxy['dialer-proxy'] = name;
+                this.chainProxyGroupNames.push(name);
+                this.config['proxy-groups'].push({
+                    name,
+                    type: 'select',
+                    ...(this.isStashClient() ? {
+                        // Explicit membership also keeps the chain acyclic on clients without exclude-type.
+                        proxies: this.getProxies()
+                            .filter(proxy => !['socks', 'socks5', 'http'].includes(String(proxy.type).toLowerCase()) && !proxy.name.startsWith('直连'))
+                            .map(proxy => proxy.name)
+                    } : {
+                        'include-all': true,
+                        filter: '^(?!直连).*',
+                        'exclude-type': 'Socks5|Http'
+                    })
+                });
             });
         }
 
