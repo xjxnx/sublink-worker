@@ -946,6 +946,14 @@ function AdminInputsPage({ entries }) {
                                         ) : (
                                             <span class="muted">-</span>
                                         )}
+                                        {entry.chainSources?.length > 0 && (
+                                            <div>
+                                                <div class="muted">链式代理 SOCKS5 / HTTP</div>
+                                                <ul>
+                                                    {entry.chainSources.map((src) => <li>{src}</li>)}
+                                                </ul>
+                                            </div>
+                                        )}
                                     </td>
                                     <td>
                                         {entry.outputSources && entry.outputSources.length > 0 ? (

@@ -70,6 +70,53 @@ describe('Input source tracking + admin viewer', () => {
         expect(body.count).toBe(0);
     });
 
+    it('stores and displays chain inputs even when output URLs are too long to retain', async () => {
+        const app = createTestApp(new MemoryKVAdapter());
+        const socks = 'socks5://demo:password@socks.example.com:1080#SOCKS';
+        const http = 'http://demo:password@http.example.com:8080#<script>alert(1)</script>';
+        await track(app, {
+            input: 'https://subscription.example.com/list',
+            chainProxyInput: ` ${socks}\r\n\n${http} `,
+            outputSources: { clash: `https://example.com/clash?config=${'x'.repeat(8192)}` },
+            options: { chain_proxy: 'true' }
+        });
+        const { entries } = await (await app.request(`/admin/inputs.json?token=${ADMIN_TOKEN}`)).json();
+        expect(entries[0].sources).toEqual(['https://subscription.example.com/list']);
+        expect(entries[0].chainSources).toEqual([socks, http]);
+        expect(entries[0].outputSources).toEqual([]);
+        expect(entries[0].options.chain_proxy).toBe('true');
+        const html = await (await app.request(`/admin/inputs?token=${ADMIN_TOKEN}`)).text();
+        expect(html).toContain('链式代理 SOCKS5 / HTTP');
+        expect(html).toContain(socks);
+        expect(html).toContain('http://demo:password@http.example.com:8080#&lt;script&gt;');
+        expect(html).not.toContain('<script>alert(1)</script>');
+    });
+
+    it.each([false, true])('recovers chain inputs from output URLs for older records and clients (stored record: %s)', async stored => {
+        const kv = new MemoryKVAdapter();
+        const app = createTestApp(kv);
+        const nodes = ['socks5://socks.example.com:1080#SOCKS', 'http://http.example.com:8080#HTTP'];
+        const outputSources = { clash: `https://example.com/clash?${new URLSearchParams({ chain_proxy: 'true', chain_proxy_input: nodes.join('\n') })}` };
+        if (stored) {
+            await kv.put('inlog:legacy-chain', JSON.stringify({ createdAt: 1, sources: ['https://subscription.example.com'], outputSources }));
+        } else {
+            await track(app, { input: 'https://subscription.example.com', outputSources });
+        }
+        const { entries } = await (await app.request(`/admin/inputs.json?token=${ADMIN_TOKEN}`)).json();
+        expect(entries[0].chainSources).toEqual(nodes);
+        if (stored) expect(JSON.parse(await kv.get('inlog:legacy-chain')).chainSources).toBeUndefined();
+    });
+
+    it('keeps explicitly disabled chain input empty instead of recovering stale output parameters', async () => {
+        const app = createTestApp(new MemoryKVAdapter());
+        await track(app, {
+            input: 'https://subscription.example.com', chainProxyInput: '',
+            outputSources: { clash: `https://example.com/clash?${new URLSearchParams({ chain_proxy: 'true', chain_proxy_input: 'socks5://old.example.com:1080' })}` }
+        });
+        const { entries } = await (await app.request(`/admin/inputs.json?token=${ADMIN_TOKEN}`)).json();
+        expect(entries[0].chainSources).toEqual([]);
+    });
+
     it('skips oversized and unsafe output URLs without storing truncated links', async () => {
         const kv = new MemoryKVAdapter();
         const app = createTestApp(kv);

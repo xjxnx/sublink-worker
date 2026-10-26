@@ -629,6 +629,7 @@ export const formLogicFn = (t) => {
                     exclude_invalid_nodes: useGeneralSettings && this.excludeInvalidNodes ? 'true' : '',
                     enable_clash_ui: useGeneralSettings && this.enableClashUI ? 'true' : '',
                     external_controller: useGeneralSettings ? this.externalController || '' : '',
+                    chain_proxy: useGeneralSettings && this.chainProxy ? 'true' : '',
                     configId: this.currentConfigId || ''
                 };
 
@@ -639,6 +640,7 @@ export const formLogicFn = (t) => {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             input: this.input,
+                            chainProxyInput: useGeneralSettings && this.chainProxy ? this.chainProxyInput : '',
                             configType: this.configType,
                             outputSources: this.generatedLinks,
                             options

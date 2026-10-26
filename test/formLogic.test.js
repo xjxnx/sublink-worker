@@ -107,6 +107,24 @@ describe('general settings form access', () => {
       }
     }
     expect(fetchMock.mock.calls.every(([url]) => url === '/track-input')).toBe(true);
+    const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(payload.chainProxyInput).toBe('');
+    expect(payload.options.chain_proxy).toBe('');
+  });
+
+  it.each([false, true])('records chain input only when it is enabled (enabled: %s)', async enabled => {
+    const fetchMock = vi.fn(async () => ({}));
+    const { data } = setup(fetchMock);
+    data.generalSettingsProtected = false;
+    data.chainProxy = enabled;
+    data.chainProxyInput = 'socks5://demo:password@socks.example.com:1080#SOCKS\nhttp://demo:password@http.example.com:8080#HTTP';
+    await data.submitForm();
+    const [path, options] = fetchMock.mock.calls.at(-1);
+    const payload = JSON.parse(options.body);
+    expect(path).toBe('/track-input');
+    expect(payload.input).toBe(data.input);
+    expect(payload.chainProxyInput).toBe(enabled ? data.chainProxyInput : '');
+    expect(payload.options.chain_proxy).toBe(enabled ? 'true' : '');
   });
 
   it('clears entered passwords on success and failure', async () => {

@@ -37,6 +37,9 @@ export class InputLogService {
             createdAt,
             target: typeof payload.configType === 'string' ? payload.configType : null,
             sources,
+            chainSources: typeof payload.chainProxyInput === 'string'
+                ? normalizeSources(payload.chainProxyInput)
+                : recoverChainSources(outputSources),
             outputSources,
             options: sanitizeOptions(payload.options),
             client: {
@@ -69,7 +72,12 @@ export class InputLogService {
             if (!raw) continue;
             try {
                 // Expose the KV key so the UI can target individual records for deletion.
-                entries.push({ ...JSON.parse(raw), key: name });
+                const record = JSON.parse(raw);
+                entries.push({
+                    ...record,
+                    chainSources: Array.isArray(record.chainSources) ? record.chainSources : recoverChainSources(record.outputSources),
+                    key: name
+                });
             } catch {
                 // Skip malformed records rather than failing the whole listing.
             }
@@ -115,6 +123,17 @@ function normalizeOutputSources(input) {
         // Reject oversized URLs intact: truncating a query can change or break its subscription.
         .filter((entry) => entry.type && entry.url.length <= MAX_OUTPUT_SOURCE_LEN && isWebUrl(entry.url))
         .slice(0, MAX_OUTPUT_SOURCES);
+}
+
+function recoverChainSources(outputSources) {
+    // Older clients stored chain inputs only inside their generated subscription URLs.
+    for (const output of normalizeOutputSources(outputSources)) {
+        const params = new URL(output.url).searchParams;
+        if (params.get('chain_proxy') === 'true') {
+            return normalizeSources(params.get('chain_proxy_input'));
+        }
+    }
+    return [];
 }
 
 function isWebUrl(value) {
