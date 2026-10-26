@@ -242,7 +242,7 @@ describe('chain proxy form settings', () => {
         const window = { location: { origin: 'https://example.com', search: '' }, APP_TRANSLATIONS: {} };
         return new Function('window', 'document', 'fetch', 'setTimeout',
             '(' + formLogicFn.toString() + ')(); return window.formData();')(
-                window, { querySelector: () => null }, async () => ({}), () => 1
+                window, { querySelector: () => null }, async () => ({ ok: true }), () => 1
             );
     };
 

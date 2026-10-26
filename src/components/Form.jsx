@@ -59,6 +59,7 @@ export const Form = (props) => {
     confirmClearConfig: t('confirmClearConfig'),
     confirmClearAll: t('confirmClearAll'),
     errorGeneratingLinks: t('errorGeneratingLinks'),
+    invalidInput: t('invalidInput'),
     shortenLinks: t('shortenLinks'),
     shortening: t('shortening'),
     alreadyShortened: t('alreadyShortened'),
@@ -108,6 +109,7 @@ export const Form = (props) => {
             labelActionsWrapperClass="flex gap-2 opacity-60 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-200"
             labelActions={inputActions('input')}
           />
+          <p x-cloak x-show="inputError" x-text="inputError" role="alert" class="mt-2 text-sm text-red-600 dark:text-red-400"></p>
           <div x-show="chainProxy && canUseGeneralSettings()" x-cloak class="mt-5 space-y-2 border-t border-gray-200/60 dark:border-gray-700/60 pt-4">
             <TextareaWithActions
               id="chain-proxy-input"

@@ -69,9 +69,9 @@ const testCases = [
     },
     {
         name: '空代理列表',
-        description: 'proxies 数组为空时不应返回任何节点',
+        description: 'proxies 数组为空时应提示输入有效订阅或节点',
         input: 'proxies: []',
-        expected: { proxyCount: 0 }
+        expected: { invalidInput: true }
     },
     {
         name: '混合类型与无效节点',
@@ -271,6 +271,10 @@ describe('YAML Parsing Tests', () => {
     testCases.forEach((testCase) => {
         it(testCase.name, async () => {
             const builder = new BaseConfigBuilder(testCase.input, {}, 'zh-CN', 'test-agent');
+            if (testCase.expected?.invalidInput) {
+                await expect(builder.parseCustomItems()).rejects.toMatchObject({ status: 400, message: '请输入正确订阅链接或者节点' });
+                return;
+            }
             const items = await builder.parseCustomItems();
 
             const result = evaluateResult(items, builder, testCase.expected || {});

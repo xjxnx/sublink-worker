@@ -2,6 +2,8 @@ import { ProxyParser } from '../parsers/index.js';
 import { createStableProviderName, deepCopy, tryDecodeSubscriptionLines, decodeBase64, isInvalidNodeName } from '../utils.js';
 import { createTranslator } from '../i18n/index.js';
 import { generateRules, getOutbounds, PREDEFINED_RULE_SETS } from '../config/index.js';
+import { InvalidPayloadError } from '../services/errors.js';
+import { isValidProxyNode } from '../parsers/proxyValidation.js';
 
 export class BaseConfigBuilder {
     constructor(inputString, baseConfig, lang, userAgent, groupByCountry = false, includeAutoSelect = true) {
@@ -30,6 +32,13 @@ export class BaseConfigBuilder {
     async parseCustomItems() {
         const input = this.inputString || '';
         const parsedItems = [];
+        const finishParsing = () => {
+            const proxies = parsedItems.filter(isValidProxyNode).map(proxy => ({ ...proxy, tag: proxy.tag || proxy.server }));
+            if (proxies.length === 0 && this.providerUrls.length === 0) {
+                throw new InvalidPayloadError(this.t('invalidInput'));
+            }
+            return proxies;
+        };
 
         // Import the content parser for direct input parsing
         const { parseSubscriptionContent } = await import('../parsers/subscription/subscriptionContentParser.js');
@@ -43,11 +52,11 @@ export class BaseConfigBuilder {
             }
             if (Array.isArray(directResult.proxies)) {
                 for (const proxy of directResult.proxies) {
-                    if (proxy && proxy.tag) {
+                    if (isValidProxyNode(proxy)) {
                         parsedItems.push(proxy);
                     }
                 }
-                if (parsedItems.length > 0) return parsedItems;
+                if (parsedItems.length > 0) return finishParsing();
             }
         }
 
@@ -65,11 +74,11 @@ export class BaseConfigBuilder {
                         }
                         if (Array.isArray(decodedResult.proxies)) {
                             for (const proxy of decodedResult.proxies) {
-                                if (proxy && proxy.tag) {
+                                if (isValidProxyNode(proxy)) {
                                     parsedItems.push(proxy);
                                 }
                             }
-                            if (parsedItems.length > 0) return parsedItems;
+                            if (parsedItems.length > 0) return finishParsing();
                         }
                     }
                 }
@@ -100,21 +109,21 @@ export class BaseConfigBuilder {
                                 this.subscriptionUserinfo = subscriptionUserinfo;
                             }
 
-                            // If format is compatible with target client, use as provider
-                            if (this.isCompatibleProviderFormat(format)) {
+                            const result = parseSubscriptionContent(content);
+                            // A format hint alone cannot prove a download contains usable proxies.
+                            if (this.isCompatibleProviderFormat(format) && result?.proxies?.some(isValidProxyNode)) {
                                 this.providerUrls.push(originalUrl);
                                 continue;  // Skip parsing, will be used as provider
                             }
 
                             // Otherwise parse the content as usual
-                            const result = parseSubscriptionContent(content);
                             if (result && typeof result === 'object' && (result.type === 'yamlConfig' || result.type === 'singboxConfig' || result.type === 'surgeConfig')) {
                                 if (result.config) {
                                     this.applyConfigOverrides(result.config);
                                 }
                                 if (Array.isArray(result.proxies)) {
                                     result.proxies.forEach(proxy => {
-                                        if (proxy && typeof proxy === 'object' && proxy.tag) {
+                                        if (isValidProxyNode(proxy)) {
                                             parsedItems.push(proxy);
                                         }
                                     });
@@ -124,7 +133,7 @@ export class BaseConfigBuilder {
                             // Handle array of URIs or other formats
                             if (Array.isArray(result)) {
                                 for (const item of result) {
-                                    if (item && typeof item === 'object' && item.tag) {
+                                    if (isValidProxyNode(item)) {
                                         parsedItems.push(item);
                                     } else if (typeof item === 'string') {
                                         const subResult = await ProxyParser.parse(item, this.userAgent);
@@ -142,7 +151,12 @@ export class BaseConfigBuilder {
                 }
 
                 // Non-HTTP URLs (protocol URIs like ss://, vmess://, etc.)
-                const result = await ProxyParser.parse(processedUrl, this.userAgent);
+                let result;
+                try {
+                    result = await ProxyParser.parse(processedUrl, this.userAgent);
+                } catch {
+                    throw new InvalidPayloadError(this.t('invalidInput'));
+                }
                 // Handle yamlConfig, singboxConfig, and surgeConfig types (they have the same structure)
                 if (result && typeof result === 'object' && (result.type === 'yamlConfig' || result.type === 'singboxConfig' || result.type === 'surgeConfig')) {
                     if (result.config) {
@@ -150,7 +164,7 @@ export class BaseConfigBuilder {
                     }
                     if (Array.isArray(result.proxies)) {
                         result.proxies.forEach(proxy => {
-                            if (proxy && typeof proxy === 'object' && proxy.tag) {
+                            if (isValidProxyNode(proxy)) {
                                 parsedItems.push(proxy);
                             }
                         });
@@ -159,7 +173,7 @@ export class BaseConfigBuilder {
                 }
                 if (Array.isArray(result)) {
                     for (const item of result) {
-                        if (item && typeof item === 'object' && item.tag) {
+                        if (isValidProxyNode(item)) {
                             parsedItems.push(item);
                         } else if (typeof item === 'string') {
                             const subResult = await ProxyParser.parse(item, this.userAgent);
@@ -174,7 +188,7 @@ export class BaseConfigBuilder {
             }
         }
 
-        return parsedItems;
+        return finishParsing();
     }
 
     /**

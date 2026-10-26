@@ -81,7 +81,7 @@ describe('Issues #370/#373/#277 - remote subscription decode and empty Clash out
         expectNoEmptyUrlTestGroup(built);
     });
 
-    it('does not emit an empty auto-select group when no proxies or providers are available', async () => {
+    it('rejects input when no proxies or providers are available', async () => {
         const builder = new ClashConfigBuilder(
             'not-a-valid-subscription',
             'minimal',
@@ -90,13 +90,6 @@ describe('Issues #370/#373/#277 - remote subscription decode and empty Clash out
             'zh-CN',
             'test-agent'
         );
-        const built = yaml.load(await builder.build());
-
-        const autoSelect = built['proxy-groups'].find(group => group.name === '⚡ 自动选择');
-        const nodeSelect = built['proxy-groups'].find(group => group.name === '🚀 节点选择');
-
-        expect(autoSelect).toBeUndefined();
-        expect(nodeSelect.proxies).toEqual(['DIRECT', 'REJECT']);
-        expectNoEmptyUrlTestGroup(built);
+        await expect(builder.build()).rejects.toMatchObject({ status: 400, message: '请输入正确订阅链接或者节点' });
     });
 });

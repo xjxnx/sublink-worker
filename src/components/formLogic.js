@@ -71,6 +71,7 @@ export const formLogicFn = (t) => {
 
         return {
             input: '',
+            inputError: '',
             showAdvanced: false,
             // Accordion states for each section (二级手风琴状态)
             accordionSections: {
@@ -185,6 +186,9 @@ export const formLogicFn = (t) => {
 
                 // Watchers to save state
                 this.$watch('input', val => {
+                    this.inputError = '';
+                    this.generatedLinks = null;
+                    this.shortenedLinks = null;
                     localStorage.setItem('inputTextarea', val);
                     this.handleInputChange(val);
                 });
@@ -511,6 +515,7 @@ export const formLogicFn = (t) => {
             clearAll() {
                 if (confirm(window.APP_TRANSLATIONS.confirmClearAll)) {
                     this.input = '';
+                    this.inputError = '';
                     this.chainProxyInput = '';
                     this.generatedLinks = null;
                     this.shortenedLinks = null;
@@ -533,9 +538,25 @@ export const formLogicFn = (t) => {
             async submitForm() {
                 if (this.loading) return;
                 this.loading = true;
+                this.inputError = '';
+                this.justConverted = false;
                 this.generatedLinks = null;
                 this.shortenedLinks = null; // Reset shortened links when generating new links
                 try {
+                    const input = this.input;
+                    const ua = this.customUA;
+                    const validation = await fetch('/validate-input?lang=' + encodeURIComponent(window.APP_LANG || 'zh-CN'), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ config: input, ua })
+                    });
+                    // An edit during validation invalidates its result, including a stale error.
+                    if (input !== this.input || ua !== this.customUA) return;
+                    if (!validation.ok) {
+                        if (validation.status !== 400) throw new Error('Input validation failed');
+                        this.inputError = window.APP_TRANSLATIONS.invalidInput;
+                        return;
+                    }
                     // Get custom rules from the child component via the hidden input
                     const customRulesInput = document.querySelector('input[name="customRules"]');
                     const customRules = customRulesInput && customRulesInput.value ? JSON.parse(customRulesInput.value) : [];
@@ -558,6 +579,7 @@ export const formLogicFn = (t) => {
                     }
 
                     const authorizedUrl = await this.authorizeSettingsUrl(origin + '/singbox?' + params.toString());
+                    if (input !== this.input || ua !== this.customUA) return;
                     const queryString = new URL(authorizedUrl).search.slice(1);
 
                     this.generatedLinks = {

@@ -20,7 +20,7 @@ import { APP_NAME, APP_SUBTITLE, APP_VERSION, GITHUB_REPO, HOME_CONTENT_UPDATED_
 import { ShortLinkService } from '../services/shortLinkService.js';
 import { ConfigStorageService } from '../services/configStorageService.js';
 import { InputLogService } from '../services/inputLogService.js';
-import { ServiceError, MissingDependencyError } from '../services/errors.js';
+import { ServiceError, MissingDependencyError, InvalidPayloadError } from '../services/errors.js';
 import { normalizeRuntime } from '../runtime/runtimeConfig.js';
 import { registerGeneralSettingsAccess } from './generalSettingsAccess.js';
 import { canonicalRedirect } from './canonicalUrls.js';
@@ -39,6 +39,7 @@ const NON_INDEXABLE_PATHS = [
     '/resolve',
     '/config',
     '/track-input',
+    '/validate-input',
     '/general-settings',
     '/admin',
     '/s/',
@@ -246,6 +247,27 @@ export function createApp(bindings = {}) {
             'Content-Type': 'application/xml; charset=utf-8',
             'Cache-Control': 'public, max-age=3600'
         });
+    });
+
+    app.post('/validate-input', async (c) => {
+        c.header('Cache-Control', 'no-store');
+        try {
+            let payload;
+            try {
+                payload = await c.req.json();
+            } catch {
+                throw new InvalidPayloadError(c.get('t')('invalidInput'));
+            }
+            if (typeof payload?.config !== 'string' || !payload.config.trim()) {
+                throw new InvalidPayloadError(c.get('t')('invalidInput'));
+            }
+            const ua = (typeof payload.ua === 'string' && payload.ua) || getRequestHeader(c.req, 'User-Agent') || DEFAULT_USER_AGENT;
+            const builder = new BaseConfigBuilder(payload.config, {}, c.get('lang'), ua);
+            await builder.parseCustomItems();
+            return c.json({ valid: true });
+        } catch (error) {
+            return handleError(c, error, runtime.logger);
+        }
     });
 
     app.get('/singbox', async (c) => {
@@ -471,7 +493,7 @@ export function createApp(bindings = {}) {
         try {
             proxies = await builder.parseCustomItems();
         } catch (e) {
-            runtime.logger.warn('Failed to parse xray input', e);
+            return handleError(c, e, runtime.logger);
         }
 
         if (parseBooleanFlag(c.req.query('exclude_invalid_nodes'))) {
@@ -484,7 +506,7 @@ export function createApp(bindings = {}) {
 
         const finalString = shareLinks.join('\n');
         if (!finalString) {
-            return c.text('Missing config parameter', 400);
+            return c.text(c.get('t')('invalidInput'), 400);
         }
 
         const responseHeaders = {};

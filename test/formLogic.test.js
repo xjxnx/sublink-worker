@@ -39,7 +39,9 @@ describe('formLogic toString fix', () => {
       APP_TRANSLATIONS: {},
       location: { origin: 'https://example.com', search: '' }
     };
-    const fetchMock = vi.fn(() => failTracking ? Promise.reject(new Error('offline')) : Promise.resolve({}));
+    const fetchMock = vi.fn(path => path.startsWith('/validate-input')
+      ? Promise.resolve({ ok: true })
+      : failTracking ? Promise.reject(new Error('offline')) : Promise.resolve({}));
     const initialize = new Function(
       'window', 'document', 'fetch', 'setTimeout', 'clearTimeout',
       '(' + formLogicFn.toString() + ')(); return window.formData();'
@@ -83,7 +85,8 @@ describe('general settings form access', () => {
       'window', 'document', 'fetch', 'setTimeout', 'clearTimeout', 'alert', 'navigator',
       '(' + formLogicFn.toString() + ')(); return window.formData();'
     );
-    const data = initialize(fakeWindow, { querySelector: () => null }, fetchMock, () => 1, () => {}, alert, navigator);
+    const fetchWithValidation = (...args) => args[0].startsWith('/validate-input') ? Promise.resolve({ ok: true }) : fetchMock(...args);
+    const data = initialize(fakeWindow, { querySelector: () => null }, fetchWithValidation, () => 1, () => {}, alert, navigator);
     data.input = 'trojan://secret@example.com:443#test';
     return { data, alert, navigator };
   };
@@ -272,7 +275,7 @@ describe('rule category selection', () => {
     };
     const initialize = new Function('window', 'document', 'fetch', 'setTimeout',
       '(' + formLogicFn.toString() + ')(); return window.formData();');
-    const data = initialize(window, { querySelector: () => null }, async () => ({}), () => 1);
+    const data = initialize(window, { querySelector: () => null }, async () => ({ ok: true }), () => 1);
     data.$refs = { ruleOptionsDialog: { showModal: vi.fn(), close: vi.fn() } };
     data.selectedRules = ['Google'];
     return data;

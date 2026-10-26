@@ -1,5 +1,6 @@
 import { decodeBase64 } from '../../utils.js';
 import { parseClashYaml, parseSubscriptionContent } from './subscriptionContentParser.js';
+import { isValidProxyNode } from '../proxyValidation.js';
 
 const SUBSCRIPTION_URI_PATTERN = /^(ss|vmess|vless|hysteria|hysteria2|hy2|trojan|tuic|anytls|http|https):\/\//i;
 
@@ -101,30 +102,19 @@ function decodeContent(text) {
  * @returns {'clash'|'singbox'|'surge'|'unknown'} - Detected format
  */
 function detectFormat(content) {
-    const trimmed = content.trim();
+    const result = parseSubscriptionContent(content);
+    if (!result?.proxies?.some(isValidProxyNode)) return 'unknown';
+    return { yamlConfig: 'clash', singboxConfig: 'singbox', surgeConfig: 'surge' }[result.type] || 'unknown';
+}
 
-    // Try JSON (Sing-Box format)
-    if (trimmed.startsWith('{')) {
-        try {
-            const parsed = JSON.parse(trimmed);
-            if (parsed.outbounds || parsed.inbounds || parsed.route) {
-                return 'singbox';
-            }
-        } catch {
-            // Not valid JSON
-        }
+async function readSubscriptionText(response) {
+    // Binary downloads must not be decoded as node lists or retained as providers.
+    const contentType = response.headers?.get('content-type') || '';
+    if (/^(image\/|audio\/|video\/|application\/(vnd\.android\.package-archive|zip|pdf|x-msdownload))/i.test(contentType)) {
+        await response.body?.cancel();
+        return '';
     }
-
-    // Try YAML (Clash format) - check for proxies: key
-    if (trimmed.includes('proxies:')) {
-        return 'clash';
-    }
-
-    if (/\[(General|Proxy|Rule|Proxy Group)\]/i.test(trimmed)) {
-        return 'surge';
-    }
-
-    return 'unknown';
+    return response.text();
 }
 
 /**
@@ -146,7 +136,7 @@ export async function fetchSubscription(url, userAgent) {
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const text = await response.text();
+        const text = await readSubscriptionText(response);
         const decodedText = decodeContent(text);
 
         return parseSubscriptionContent(decodedText);
@@ -157,7 +147,7 @@ export async function fetchSubscription(url, userAgent) {
 }
 
 /**
- * Fetch subscription content and detect its format without parsing
+ * Fetch subscription content and detect its format from usable proxy entries
  * @param {string} url - The subscription URL to fetch
  * @param {string} userAgent - Optional User-Agent header
  * @returns {Promise<{content: string, format: 'clash'|'singbox'|'surge'|'unknown', url: string, subscriptionUserinfo?: string}|null>}
@@ -175,7 +165,7 @@ export async function fetchSubscriptionWithFormat(url, userAgent) {
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const text = await response.text();
+        const text = await readSubscriptionText(response);
         const content = decodeContent(text);
         const format = detectFormat(content);
 
