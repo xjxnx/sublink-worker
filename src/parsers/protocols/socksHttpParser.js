@@ -3,7 +3,13 @@ import { InvalidPayloadError } from '../../services/errors.js';
 
 export function parseSocksHttp(input) {
     try {
-        const match = input.trim().match(/^(socks|socks5|socks5h|http|https):\/\/(.+)$/i);
+        const trimmed = input.trim();
+        const shorthand = trimmed.match(/^(\[[^\]\s]+\]|[^:\s/@?#\[\]]+):(\d+):([^:\r\n]+):(.+)$/);
+        // Encode raw credentials so password delimiters are not interpreted as URI syntax.
+        const normalized = shorthand
+            ? `socks5://${encodeURIComponent(shorthand[3])}:${encodeURIComponent(shorthand[4])}@${shorthand[1]}:${shorthand[2]}`
+            : trimmed;
+        const match = normalized.match(/^(socks|socks5|socks5h|http|https):\/\/(.+)$/i);
         if (!match) throw new Error();
         const scheme = match[1].toLowerCase();
         const isHttp = scheme.startsWith('http');
@@ -52,6 +58,6 @@ export function parseSocksHttp(input) {
         }
         return proxy;
     } catch {
-        throw new InvalidPayloadError('Invalid chain proxy URI. Use socks://, socks5://, socks5h://, http:// or https:// with a valid server and port.');
+        throw new InvalidPayloadError('Invalid chain proxy URI. Use socks://, socks5://, socks5h://, http:// or https:// with a valid server and port, or hostname:port:username:password (SOCKS5).');
     }
 }

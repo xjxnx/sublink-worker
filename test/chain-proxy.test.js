@@ -30,6 +30,18 @@ describe('SOCKS / HTTP chain proxy URIs', () => {
         });
     });
 
+    it.each(['proxy.example.com', '192.0.2.1', '[2001:db8::1]'])('defaults host:port:username:password to SOCKS5 for %s', host => {
+        expect(parseSocksHttp(` ${host}:1080:用户@name:08052:p@ss#?/%25 `)).toEqual({
+            tag: host.replace(/^\[|\]$/g, ''), type: 'socks', version: '5',
+            server: host.replace(/^\[|\]$/g, ''), server_port: 1080,
+            username: '用户@name', password: '08052:p@ss#?/%25'
+        });
+    });
+
+    it.each(['host:0:user:pass', 'host:65536:user:pass', 'host:abc:user:pass', 'host:1080:user', 'host:1080::pass', 'host:1080:user:', 'host/path:1080:user:pass', '2001:db8::1:1080:user:pass'])('rejects malformed shorthand %s', input => {
+        expect(() => parseSocksHttp(input)).toThrow(/Invalid chain proxy URI/);
+    });
+
     it.each(['socks', 'socks5', 'socks5h', 'http', 'https'])('supports %s credentials, IPv6 and encoded names', (scheme) => {
         const parsed = parseSocksHttp(`${scheme}://user%40name:p%3Aa%2Fss@[2001:db8::1]:443#%E9%A6%99%E6%B8%AF`);
         expect(parsed).toMatchObject({
@@ -56,6 +68,24 @@ describe('SOCKS / HTTP chain proxy URIs', () => {
 });
 
 describe('Clash / Stash chain proxy output', () => {
+    it.each(['mihomo', 'Stash'])('converts shorthand mixed with HTTP nodes through the %s route', async ua => {
+        const params = new URLSearchParams({
+            config: NODE, chain_proxy: 'true',
+            chain_proxy_input: '192.0.2.1:1080:user:08052:p@ss#?/%25\nhttp://user:password@http.example.com:8080#HTTP'
+        });
+        const response = await createTestApp().request(`https://example.com/clash?${params}`, { headers: { 'User-Agent': ua } });
+        expect(response.status).toBe(200);
+        const config = yaml.load(await response.text());
+        expect(config.proxies.find(proxy => proxy.type === 'socks5')).toMatchObject({
+            server: '192.0.2.1', port: 1080, username: 'user', password: '08052:p@ss#?/%25',
+            'dialer-proxy': `${GROUP_PREFIX}-192.0.2.`
+        });
+        expect(config.proxies.find(proxy => proxy.type === 'http')).toMatchObject({
+            server: 'http.example.com', port: 8080, 'dialer-proxy': `${GROUP_PREFIX}-HTTP`
+        });
+        expect(config['proxy-groups'].filter(group => group.name.startsWith(GROUP_PREFIX))).toHaveLength(2);
+    });
+
     it('adds an independent protocol-filtered pool per chained node exactly once, including selector membership', async () => {
         const builder = build(NODE, `${SOCKS}\nhttps://user:pass@http.example.com:443?tls=true&sni=tls.example.com#HTTP`);
         const config = yaml.load(await builder.build());

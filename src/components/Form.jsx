@@ -126,7 +126,7 @@ export const Form = (props) => {
               labelActions={inputActions('chainProxyInput')}
               model="chainProxyInput"
               rows={3}
-              placeholder={'socks5://user:password@server:1080#SOCKS5\nhttp://user:password@server:8080#HTTP'}
+              placeholder={'server:1080:user:password\nsocks5://user:password@server:1080#SOCKS5\nhttp://user:password@server:8080#HTTP'}
             />
             <p class="text-xs text-gray-500 dark:text-gray-400">{t('chainProxyTip')}</p>
           </div>
