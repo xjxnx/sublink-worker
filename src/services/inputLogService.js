@@ -1,4 +1,5 @@
 import { MissingDependencyError } from './errors.js';
+import { ShortLinkService } from './shortLinkService.js';
 
 // Records are prefixed and keyed by zero-padded timestamp so KV's lexicographic
 // list order matches chronological order, and they never collide with other keys.
@@ -8,6 +9,7 @@ const MAX_SOURCES = 200;
 const MAX_SOURCE_LEN = 2048;
 const MAX_OUTPUT_SOURCES = 20;
 const MAX_OUTPUT_SOURCE_LEN = 8192;
+const OUTPUT_PREFIXES = { '/xray': 'x', '/singbox': 'b', '/clash': 'c', '/surge': 's' };
 // Records auto-expire so the log self-prunes; overridable via INPUT_LOG_TTL_SECONDS.
 const DEFAULT_TTL_SECONDS = 40 * 24 * 60 * 60;
 
@@ -29,7 +31,12 @@ export class InputLogService {
         const sources = normalizeSources(payload.input);
         // Nothing meaningful to record without at least one source line.
         if (sources.length === 0) return null;
-        const outputSources = normalizeOutputSources(payload.outputSources);
+        const originalOutputs = normalizeOutputSources(payload.outputSources);
+        const chainSources = typeof payload.chainProxyInput === 'string'
+            ? normalizeSources(payload.chainProxyInput)
+            : recoverChainSources(originalOutputs);
+        const ttl = this.options.inputLogTtlSeconds ?? DEFAULT_TTL_SECONDS;
+        const outputSources = await shortenOutputSources(originalOutputs, kv, ttl, context.origin);
 
         const createdAt = Date.now();
         const key = `${LOG_PREFIX}${String(createdAt).padStart(TS_WIDTH, '0')}-${randomSuffix()}`;
@@ -37,9 +44,7 @@ export class InputLogService {
             createdAt,
             target: typeof payload.configType === 'string' ? payload.configType : null,
             sources,
-            chainSources: typeof payload.chainProxyInput === 'string'
-                ? normalizeSources(payload.chainProxyInput)
-                : recoverChainSources(outputSources),
+            chainSources,
             outputSources,
             options: sanitizeOptions(payload.options),
             client: {
@@ -48,7 +53,6 @@ export class InputLogService {
             }
         };
 
-        const ttl = this.options.inputLogTtlSeconds ?? DEFAULT_TTL_SECONDS;
         const putOptions = ttl ? { expirationTtl: ttl } : undefined;
         await kv.put(key, JSON.stringify(record), putOptions);
         return key;
@@ -120,9 +124,32 @@ function normalizeOutputSources(input) {
             url: typeof url === 'string' ? url.trim() : ''
         }))
         // Only keep navigable web URLs so public tracking requests cannot plant javascript links in the admin page.
-        // Reject oversized URLs intact: truncating a query can change or break its subscription.
-        .filter((entry) => entry.type && entry.url.length <= MAX_OUTPUT_SOURCE_LEN && isWebUrl(entry.url))
+        .filter((entry) => entry.type && isWebUrl(entry.url))
         .slice(0, MAX_OUTPUT_SOURCES);
+}
+
+async function shortenOutputSources(outputs, kv, ttl, origin) {
+    // Log links must remain usable for as long as their records, regardless of the public short-link TTL.
+    const shortLinks = new ShortLinkService(kv, { shortLinkTtlSeconds: ttl });
+    const shortCodes = new Map();
+    const result = [];
+    for (const output of outputs) {
+        if (output.url.length <= MAX_OUTPUT_SOURCE_LEN) {
+            result.push(output);
+            continue;
+        }
+        const url = new URL(output.url);
+        const prefix = OUTPUT_PREFIXES[url.pathname];
+        // Existing short routes preserve conversion queries and resolve on the current deployment.
+        if (!prefix || url.origin !== origin) continue;
+        let code = shortCodes.get(url.search);
+        if (!code) {
+            code = await shortLinks.createShortLink(url.search);
+            shortCodes.set(url.search, code);
+        }
+        result.push({ type: output.type, url: `${origin}/${prefix}/${code}` });
+    }
+    return result;
 }
 
 function recoverChainSources(outputSources) {

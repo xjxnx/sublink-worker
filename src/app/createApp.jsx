@@ -619,6 +619,7 @@ export function createApp(bindings = {}) {
             }
 
             await inputLog.record(payload, {
+                origin: new URL(c.req.url).origin,
                 clientUa: getRequestHeader(c.req, 'User-Agent') || null,
                 clientIp:
                     getRequestHeader(c.req, 'CF-Connecting-IP') ||

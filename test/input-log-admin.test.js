@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createApp } from '../src/app/createApp.jsx';
 import { MemoryKVAdapter } from '../src/adapters/kv/memoryKv.js';
+import { formLogicFn } from '../src/components/formLogic.js';
 
 const ADMIN_TOKEN = 'secret-token';
 
-const createTestApp = (kv, withToken = true) =>
+const createTestApp = (kv, withToken = true, config = {}) =>
     createApp({
         kv,
         assetFetcher: null,
@@ -13,7 +14,8 @@ const createTestApp = (kv, withToken = true) =>
             configTtlSeconds: 60,
             shortLinkTtlSeconds: null,
             inputLogTtlSeconds: null,
-            adminToken: withToken ? ADMIN_TOKEN : null
+            adminToken: withToken ? ADMIN_TOKEN : null,
+            ...config
         }
     });
 
@@ -70,20 +72,68 @@ describe('Input source tracking + admin viewer', () => {
         expect(body.count).toBe(0);
     });
 
-    it('stores and displays chain inputs even when output URLs are too long to retain', async () => {
+    it.each([false, true])('records resolvable short links for large node lists (chain proxy: %s)', async chainProxy => {
+        const app = createTestApp(new MemoryKVAdapter());
+        let tracking;
+        const fetch = (path, options) => {
+            const response = app.request(path, options);
+            if (path === '/track-input') tracking = response;
+            return response;
+        };
+        const initialize = new Function(
+            'window', 'document', 'fetch', 'setTimeout', 'clearTimeout',
+            '(' + formLogicFn.toString() + ')(); return window.formData();'
+        );
+        const data = initialize(
+            { APP_TRANSLATIONS: {}, location: { origin: 'http://localhost', search: '' } },
+            { querySelector: () => null }, fetch, () => 1, () => {}
+        );
+        data.input = [
+            ...Array.from({ length: 60 }, (_, i) => `trojan://demo-password@node${i}.example.com:443?security=tls&type=tcp&sni=node${i}.example.com&allowInsecure=1#${encodeURIComponent(`节点 ${i}`)}`),
+            'socks5://demo:password@socks.example.com:1080#SOCKS'
+        ].join('\n');
+        data.chainProxy = chainProxy;
+        data.chainProxyInput = 'socks5://demo:password@socks.example.com:1080#SOCKS\nhttp://demo:password@http.example.com:8080#HTTP';
+
+        await data.submitForm();
+        expect(tracking).toBeDefined();
+        expect((await tracking).status).toBe(204);
+        const { entries } = await (await app.request(`/admin/inputs.json?token=${ADMIN_TOKEN}`)).json();
+        expect(entries).toHaveLength(1);
+        expect(entries[0].sources).toEqual(data.input.split('\n'));
+        expect(entries[0].chainSources).toEqual(chainProxy ? data.chainProxyInput.split('\n') : []);
+        expect(entries[0].outputSources.map(output => output.type)).toEqual(Object.keys(data.generatedLinks));
+        expect(new Set(entries[0].outputSources.map(output => new URL(output.url).pathname.split('/').at(-1))).size).toBe(1);
+
+        const html = await (await app.request(`/admin/inputs?token=${ADMIN_TOKEN}`)).text();
+        for (const { type, url } of entries[0].outputSources) {
+            expect(data.generatedLinks[type].length).toBeGreaterThan(8192);
+            expect(url).toMatch(/^http:\/\/localhost\/[xbcs]\/[a-zA-Z0-9_-]+$/);
+            const redirect = await app.request(url);
+            expect(redirect.status).toBe(302);
+            expect(redirect.headers.get('Location')).toBe(data.generatedLinks[type]);
+            const params = new URL(redirect.headers.get('Location')).searchParams;
+            expect(params.get('config')).toBe(data.input);
+            expect(params.get('chain_proxy_input')).toBe(chainProxy ? data.chainProxyInput : null);
+            expect(html).toContain(`aria-label="复制 ${type} 链接"`);
+            expect(html).toContain(url.replaceAll('&', '&amp;'));
+        }
+    });
+
+    it('stores and displays chain inputs alongside shortened output URLs', async () => {
         const app = createTestApp(new MemoryKVAdapter());
         const socks = 'socks5://demo:password@socks.example.com:1080#SOCKS';
         const http = 'http://demo:password@http.example.com:8080#<script>alert(1)</script>';
         await track(app, {
             input: 'https://subscription.example.com/list',
             chainProxyInput: ` ${socks}\r\n\n${http} `,
-            outputSources: { clash: `https://example.com/clash?config=${'x'.repeat(8192)}` },
+            outputSources: { clash: `http://localhost/clash?config=${'x'.repeat(64 * 1024)}` },
             options: { chain_proxy: 'true' }
         });
         const { entries } = await (await app.request(`/admin/inputs.json?token=${ADMIN_TOKEN}`)).json();
         expect(entries[0].sources).toEqual(['https://subscription.example.com/list']);
         expect(entries[0].chainSources).toEqual([socks, http]);
-        expect(entries[0].outputSources).toEqual([]);
+        expect(entries[0].outputSources).toEqual([{ type: 'clash', url: expect.stringMatching(/^http:\/\/localhost\/c\//) }]);
         expect(entries[0].options.chain_proxy).toBe('true');
         const html = await (await app.request(`/admin/inputs?token=${ADMIN_TOKEN}`)).text();
         expect(html).toContain('链式代理 SOCKS5 / HTTP');
@@ -96,7 +146,7 @@ describe('Input source tracking + admin viewer', () => {
         const kv = new MemoryKVAdapter();
         const app = createTestApp(kv);
         const nodes = ['socks5://socks.example.com:1080#SOCKS', 'http://http.example.com:8080#HTTP'];
-        const outputSources = { clash: `https://example.com/clash?${new URLSearchParams({ chain_proxy: 'true', chain_proxy_input: nodes.join('\n') })}` };
+        const outputSources = { clash: `http://localhost/clash?${new URLSearchParams({ chain_proxy: 'true', chain_proxy_input: nodes.join('\n'), padding: 'x'.repeat(8192) })}` };
         if (stored) {
             await kv.put('inlog:legacy-chain', JSON.stringify({ createdAt: 1, sources: ['https://subscription.example.com'], outputSources }));
         } else {
@@ -117,16 +167,20 @@ describe('Input source tracking + admin viewer', () => {
         expect(entries[0].chainSources).toEqual([]);
     });
 
-    it('skips oversized and unsafe output URLs without storing truncated links', async () => {
+    it('skips unsafe output URLs and only shortens local conversion URLs', async () => {
         const kv = new MemoryKVAdapter();
         const app = createTestApp(kv);
         const validUrl = 'https://example.com/clash?config=complete';
+        const longPrefix = 'https://example.com/singbox?config=';
+        const longUrl = longPrefix + 'a'.repeat(8192 - longPrefix.length);
         await track(app, {
             input: 'vless://node',
             outputSources: [
                 null,
                 { type: 'clash', url: ` ${validUrl} ` },
-                { type: 'oversized', url: `https://example.com/?config=${'a'.repeat(8192)}` },
+                { type: 'singbox', url: longUrl },
+                { type: 'oversized', url: `https://example.com/?config=${'a'.repeat(64 * 1024)}` },
+                { type: 'foreign', url: `https://example.com/clash?config=${'a'.repeat(8192)}` },
                 { type: 'unsafe', url: 'java\nscript:alert(1)' },
                 { type: 'data', url: 'data:text/html,<script>alert(1)</script>' }
             ]
@@ -134,7 +188,38 @@ describe('Input source tracking + admin viewer', () => {
 
         const res = await app.request(`http://localhost/admin/inputs.json?token=${ADMIN_TOKEN}`);
         const body = await res.json();
-        expect(body.entries[0].outputSources).toEqual([{ type: 'clash', url: validUrl }]);
+        expect(body.entries[0].outputSources).toEqual([
+            { type: 'clash', url: validUrl },
+            { type: 'singbox', url: longUrl }
+        ]);
+    });
+
+    it.each([8192, 8193, 64 * 1024])('preserves the full query for an output URL of %s characters', async length => {
+        const app = createTestApp(new MemoryKVAdapter());
+        const prefix = 'http://localhost/clash?config=';
+        const url = prefix + 'a'.repeat(length - prefix.length);
+        await track(app, { input: 'vless://node', outputSources: { clash: url } });
+        const { entries } = await (await app.request(`/admin/inputs.json?token=${ADMIN_TOKEN}`)).json();
+        expect(entries[0].outputSources).toHaveLength(1);
+        const output = entries[0].outputSources[0];
+        if (length <= 8192) {
+            expect(output.url).toBe(url);
+        } else {
+            expect(output.url.length).toBeLessThan(8192);
+            const redirect = await app.request(output.url);
+            expect(redirect.status).toBe(302);
+            expect(redirect.headers.get('Location')).toBe(url);
+        }
+    });
+
+    it.each([0, 120, null])('uses the input log TTL for generated short links (configured TTL: %s)', async ttl => {
+        const kv = new MemoryKVAdapter();
+        const put = vi.spyOn(kv, 'put');
+        const app = createTestApp(kv, true, { inputLogTtlSeconds: ttl, shortLinkTtlSeconds: 60 });
+        await track(app, { input: 'vless://node', outputSources: { clash: `http://localhost/clash?config=${'a'.repeat(8192)}` } });
+        expect(put).toHaveBeenCalledTimes(2);
+        const expectedOptions = ttl === 0 ? undefined : { expirationTtl: ttl ?? 40 * 24 * 60 * 60 };
+        expect(put.mock.calls.map(call => call[2])).toEqual([expectedOptions, expectedOptions]);
     });
 
     it('renders old records without output sources', async () => {
