@@ -38,7 +38,7 @@ export const UNIFIED_RULES = [
 	},
 	{
 		name: 'Location:CN',
-		site_rules: ['geolocation-cn', 'cn'],
+		site_rules: ['cn'],
 		ip_rules: ['cn']
 	},
 	{

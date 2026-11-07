@@ -53,7 +53,8 @@ describe('GET /subconverter', () => {
         const text = await res.text();
 
         // minimal: Location:CN, Private, Non-China
-        expect(text).toContain('GEOSITE,geolocation-cn');
+        expect(text).toContain('GEOSITE,cn');
+        expect(text).not.toContain('GEOSITE,geolocation-cn');
         expect(text).toContain('GEOIP,private');
         expect(text).toContain('GEOSITE,geolocation-!cn');
 
