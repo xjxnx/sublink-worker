@@ -1,5 +1,45 @@
 export const CONVERSION_GUIDES = [
     {
+        path: '/guides/subscription-formats',
+        updatedAt: '2026-11-07',
+        title: 'Clash、Sing-Box、Surge、Xray/V2Ray 订阅格式怎么选？',
+        description: '按客户端选择订阅转换格式：Clash/Mihomo 使用 YAML，Sing-Box 使用 JSON，Surge 使用 INI 风格配置，Xray/V2Ray 输出 Base64 节点链接列表。附格式对照和导入排查方法。',
+        summary: '对照四种输出格式，按客户端选择订阅，并了解规则和协议的转换边界。',
+        intro: '在 clash订阅转换（Sublink Worker）中，Clash/Mihomo 选 Clash YAML，Sing-Box 选 Sing-Box JSON，Surge 选 Surge 配置，v2rayN 等接受节点订阅的客户端选 Xray/V2Ray。本站的 Xray/V2Ray 输出是 Base64 编码的节点分享链接列表，不是完整的 Xray JSON 配置。',
+        comparison: {
+            title: '四种输出格式对照',
+            headers: ['输出选项', '实际格式', '适用客户端与边界'],
+            rows: [
+                ['Clash / Mihomo', 'YAML 配置', '包含代理节点、策略组与分流规则。客户端需支持相应的 Clash 配置字段；Stash 的适配由客户端拉取订阅时处理。'],
+                ['Sing-Box', 'JSON 配置', '包含 outbounds 和 route 等配置。不同核心版本支持的字段不同，需要匹配客户端版本。'],
+                ['Surge', 'INI 风格配置', '包含代理、策略组和规则。目标客户端需要支持对应协议，不能直接导入 Clash YAML。'],
+                ['Xray / V2Ray', 'Base64 节点分享链接列表', '供 v2rayN 等支持节点订阅的客户端导入，不包含完整的 Xray 路由配置，也不是 Xray JSON。']
+            ]
+        },
+        steps: [
+            { title: '先确认客户端支持的格式', text: '查看客户端的订阅或远程配置入口，确认它接收 Clash YAML、Sing-Box JSON、Surge 配置还是节点链接订阅。客户端名称与内核名称可能不同，应以实际支持的格式为准。' },
+            { title: '输入已有订阅并选择对应结果', text: '回到首页，粘贴订阅地址、节点分享链接或一份完整配置，点击“转换”，复制与客户端对应的结果链接。多个订阅地址可以每行一个，不能把多份完整 YAML 或 JSON 文档直接拼接。' },
+            { title: '更新配置并核对协议和规则', text: '在客户端导入生成的链接并更新。检查节点是否完整、协议是否受支持，以及规则是否符合预期。转换成功只表示格式处理完成，不表示节点连通性已验证。' }
+        ],
+        example: {
+            title: '同一份输入可以生成不同客户端的订阅',
+            text: '将下面的节点链接作为输入，转换后选择客户端需要的结果。该链接使用虚构域名和密码，只演示输入格式，不提供可用节点。',
+            code: 'ss://YWVzLTEyOC1nY206ZGVtby1wYXNzd29yZA@node.example.com:8388#Demo'
+        },
+        sections: [
+            { title: 'Clash YAML 能转换成 Sing-Box JSON 吗？', text: '可以导入受支持的 Clash YAML 内容或订阅地址，解析节点后生成 Sing-Box 配置。Clash 与 Sing-Box 的字段和规则语法不同，不能保证所有专用设置逐项保留。请在转换时选择目标规则，并在客户端检查生成的配置。' },
+            { title: '为什么 Xray/V2Ray 结果不是 JSON？', text: '本站的 Xray/V2Ray 入口为订阅导入生成 Base64 编码的节点链接列表。解码后是按行排列的节点分享链接，由客户端导入和管理。需要完整 Xray JSON 时，应按 Xray 官方配置说明另行配置路由等设置。' },
+            { title: '转换后会完整保留原来的规则吗？', text: '不能假定跨格式转换会逐项保留原配置。工具会解析支持的代理节点，并结合所选规则与目标基础配置生成结果。不同客户端的策略组、规则与扩展字段有差异，导入后应检查关键分流行为。' },
+            { title: '提示不支持协议或字段时怎么办？', text: '先核对是否选错了输出链接，再检查客户端和内核版本，以及目标格式是否支持节点协议与传输方式。配置转换无法给客户端增加协议支持；必要时更换节点或使用支持该协议的客户端。' }
+        ],
+        references: [
+            { title: 'Mihomo 配置文档', url: 'https://wiki.metacubex.one/config/' },
+            { title: 'Sing-Box 配置文档', url: 'https://sing-box.sagernet.org/configuration/' },
+            { title: 'Surge 官方配置手册', url: 'https://manual.nssurge.com/' },
+            { title: 'Xray 配置文档', url: 'https://xtls.github.io/config/' }
+        ]
+    },
+    {
         path: '/guides/chain-proxy',
         previousPaths: ['/guides/clash-to-singbox'],
         updatedAt: '2026-10-26',

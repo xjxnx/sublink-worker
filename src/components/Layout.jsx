@@ -17,6 +17,7 @@ export const Layout = (props) => {
     keywords = '',
     lang = 'en',
     canonicalUrl,
+    markdownUrl,
     alternates = [],
     ogTitle,
     ogDescription,
@@ -44,6 +45,7 @@ export const Layout = (props) => {
         ${keywords ? html`<meta name="keywords" content="${keywords}" />` : ''}
 
         ${canonicalUrl ? html`<link rel="canonical" href="${canonicalUrl}" />` : ''}
+        ${markdownUrl ? html`<link rel="alternate" type="text/markdown" href="${markdownUrl}" title="Markdown" />` : ''}
         ${alternates.map((alt) => html`<link rel="alternate" hreflang="${alt.hreflang}" href="${alt.href}" />`)}
 
         <meta property="og:type" content="website" />

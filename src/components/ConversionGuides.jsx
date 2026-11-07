@@ -1,10 +1,11 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource hono/jsx */
 import { CONVERSION_GUIDES } from '../content/conversionGuides.js';
+import { guideMarkdownPath } from '../content/publicDocuments.js';
 import { Layout } from './Layout.jsx';
 import { Navbar } from './Navbar.jsx';
 import { Footer } from './Footer.jsx';
-import { APP_NAME } from '../constants.js';
+import { APP_NAME, GITHUB_REPO } from '../constants.js';
 import { CollapsibleSection } from './CollapsibleSection.jsx';
 
 export const GuideLinks = ({ excludePath, collapsible = false }) => {
@@ -54,7 +55,13 @@ export const ConversionGuidePage = ({ guide, origin }) => {
     const jsonLd = {
         '@context': 'https://schema.org',
         '@graph': [
-            { '@type': 'WebPage', '@id': canonicalUrl, url: canonicalUrl, name: guide.title, description: guide.description, dateModified: guide.updatedAt, inLanguage: 'zh-CN', breadcrumb: { '@id': `${canonicalUrl}#breadcrumb` } },
+            {
+                '@type': 'WebPage', '@id': canonicalUrl, url: canonicalUrl, name: guide.title,
+                description: guide.description, dateModified: guide.updatedAt, inLanguage: 'zh-CN',
+                isPartOf: { '@id': `${origin}/#website` }, about: { '@id': `${origin}/#application` },
+                citation: guide.references.map(reference => ({ '@type': 'CreativeWork', name: reference.title, url: reference.url })),
+                breadcrumb: { '@id': `${canonicalUrl}#breadcrumb` }
+            },
             {
                 '@type': 'BreadcrumbList', '@id': `${canonicalUrl}#breadcrumb`,
                 itemListElement: [
@@ -65,7 +72,7 @@ export const ConversionGuidePage = ({ guide, origin }) => {
         ]
     };
     return (
-        <Layout title={`${guide.title} | ${APP_NAME}`} description={guide.description} lang="zh-CN" canonicalUrl={canonicalUrl} ogLocale="zh_CN" ogSiteName={APP_NAME} jsonLd={jsonLd}>
+        <Layout title={`${guide.title} | ${APP_NAME}`} description={guide.description} lang="zh-CN" canonicalUrl={canonicalUrl} markdownUrl={`${origin}${guideMarkdownPath(guide)}`} ogLocale="zh_CN" ogSiteName={APP_NAME} jsonLd={jsonLd}>
             <div class="flex flex-col min-h-screen">
                 <Navbar lang="zh-CN" guideLabel="开始转换" guideHref="/#input" />
                 <main class="flex-1 container mx-auto px-4 sm:px-6 pt-24 sm:pt-28">
@@ -76,6 +83,11 @@ export const ConversionGuidePage = ({ guide, origin }) => {
                         </nav>
                         <header class="space-y-4">
                             <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white">{guide.title}</h1>
+                            <p class="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
+                                <span>内容更新：<time datetime={guide.updatedAt}>{guide.updatedAt}</time></span>
+                                <a href={guideMarkdownPath(guide)} class="text-primary-700 dark:text-primary-300 underline">Markdown 版</a>
+                                <a href={GITHUB_REPO} class="text-primary-700 dark:text-primary-300 underline">项目源码</a>
+                            </p>
                             <p class="leading-relaxed text-gray-600 dark:text-gray-400">{guide.intro}</p>
                             <a href="/#input" class="inline-flex rounded-xl bg-primary-600 px-5 py-3 text-white font-semibold hover:bg-primary-700">打开工具开始转换</a>
                         </header>
@@ -86,7 +98,29 @@ export const ConversionGuidePage = ({ guide, origin }) => {
                                 <p class="rounded-xl bg-primary-50 dark:bg-primary-900/30 p-4 font-semibold leading-relaxed text-primary-700 dark:text-primary-300">{guide.overview.flow}</p>
                             </section>
                         )}
-                        <section class="space-y-4">
+                        {guide.comparison && (
+                            <section aria-labelledby="format-comparison-title" class="space-y-4 min-w-0">
+                                <h2 id="format-comparison-title" class="text-2xl font-bold text-gray-900 dark:text-white">{guide.comparison.title}</h2>
+                                <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                                    <table class="w-full text-sm text-left leading-relaxed text-gray-600 dark:text-gray-400">
+                                        <caption class="sr-only">{guide.comparison.title}</caption>
+                                        <thead class="bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                                            <tr>{guide.comparison.headers.map(header => <th scope="col" class="px-4 py-3">{header}</th>)}</tr>
+                                        </thead>
+                                        <tbody>
+                                            {guide.comparison.rows.map(row => (
+                                                <tr class="border-t border-gray-200 dark:border-gray-700">
+                                                    {row.map((cell, index) => index === 0
+                                                        ? <th scope="row" class="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">{cell}</th>
+                                                        : <td class="px-4 py-3">{cell}</td>)}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+                        )}
+                        <section id="steps" class="space-y-4 scroll-mt-28">
                             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">操作步骤</h2>
                             <ol class="space-y-4 list-decimal ps-6">
                                 {guide.steps.map(step => (
@@ -110,8 +144,8 @@ export const ConversionGuidePage = ({ guide, origin }) => {
                             <p class="leading-relaxed text-gray-600 dark:text-gray-400">{guide.example.text}</p>
                             <pre dir="ltr" class="overflow-x-auto rounded-xl bg-gray-900 p-4 text-sm leading-relaxed text-gray-100"><code>{guide.example.code}</code></pre>
                         </section>
-                        {guide.sections.map(section => (
-                            <section class="space-y-3">
+                        {guide.sections.map((section, index) => (
+                            <section id={`question-${index + 1}`} class="space-y-3 scroll-mt-28">
                                 <h2 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{section.title}</h2>
                                 <p class="leading-relaxed text-gray-600 dark:text-gray-400">{section.text}</p>
                             </section>

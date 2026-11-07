@@ -68,13 +68,17 @@ npm run dev
 
 中文首页固定使用 `/`，英文、波斯文和俄文分别使用 `/?lang=en-US`、`/?lang=fa` 和 `/?lang=ru`。旧的 `/?lang=zh-CN` 会永久跳转到 `/`，语言别名会跳转到对应的规范网址。首页语言只由网址决定，不随浏览器语言变化；订阅接口仍支持原有语言参数与请求头。
 
-Cloudflare Workers 和 Vercel 默认将首页、`/robots.txt`、`/sitemap.xml` 的 HTTP 请求以 `308` 跳转到 HTTPS。localhost 和回环地址保留 HTTP，便于本地开发。Node.js / Docker 在反向代理提供 HTTPS 后设置 `FORCE_HTTPS=true` 启用相同行为，并让反向代理正确传递 `X-Forwarded-Proto`。需要通过局域网 HTTP 调试云端入口时，可设置 `FORCE_HTTPS=false`。
+Cloudflare Workers 和 Vercel 默认将首页、教程（含 Markdown）、`/llms.txt`、`/robots.txt`、`/sitemap.xml` 的 HTTP 请求以 `308` 跳转到 HTTPS。localhost 和回环地址保留 HTTP，便于本地开发。Node.js / Docker 在反向代理提供 HTTPS 后设置 `FORCE_HTTPS=true` 启用相同行为，并让反向代理正确传递 `X-Forwarded-Proto`。需要通过局域网 HTTP 调试云端入口时，可设置 `FORCE_HTTPS=false`。
 
 这项跳转只处理公开页面；订阅和管理接口的既有地址、签名不会被改写。静态资源的全站 HTTPS 跳转可由 Cloudflare 或反向代理统一配置。
 
-首页提供常显的格式说明与教程入口，详细使用说明仍可展开查看。中文教程分别位于 `/guides/clash-to-singbox`（Clash 转 Sing-Box）和 `/guides/merge-subscriptions`（合并多个订阅），以服务端 HTML 输出正文，并包含独立标题、描述、canonical 和面包屑结构化数据。教程内容固定为中文，不随浏览器语言变化；教程地址的尾斜杠和语言参数会规范化到同一个网址。
+首页提供可展开的格式说明、常见问题与教程入口。中文教程包括 `/guides/subscription-formats`（客户端格式对照）、`/guides/chain-proxy`（链式代理）和 `/guides/merge-subscriptions`（合并多个订阅）。旧地址 `/guides/clash-to-singbox` 永久跳转到链式代理教程。教程以服务端 HTML 输出正文，并包含独立标题、描述、canonical、内容更新时间、官方参考来源与面包屑结构化数据。教程内容固定为中文，不随浏览器语言变化；教程地址的尾斜杠和语言参数会规范化到同一个网址。
 
-部署后，在 Google Search Console 提交 `https://你的域名/sitemap.xml`。地图包含中文首页、三个语言版本与两篇中文教程；首页语言版本的 canonical、hreflang、导航链接一致，教程仅使用自身的 canonical。发布后可通过“网址检查”检查首页与教程，并在需要时请求编入索引。如果仍显示“无法抓取”，检查具体抓取错误和 Cloudflare 安全事件；本地或普通浏览器访问成功不等于 Google 抓取成功。站点地图可帮助发现页面，不保证收录或排名，搜索标题与摘要也可能由 Google 重写。
+`/llms.txt` 提供项目身份、输入输出格式、功能边界、常见问题与教程索引。每篇教程在原地址后加 `.md` 可获得 Markdown 版，例如 `/guides/subscription-formats.md`。Markdown 和 HTML 从同一份内容生成，Markdown 响应通过 `Link: <HTML 地址>; rel="canonical"` 指向原文。所有地址自动使用当前部署域名，文档只读取公开内容，不读取用户输入或 KV 中的订阅。内容日期来自实际编辑记录，不随请求或部署刷新。
+
+`robots.txt` 对公共页面使用通用放行规则，订阅、短链接和管理接口继续禁止抓取并返回 `X-Robots-Tag: noindex, nofollow`。无需为 AI 爬虫额外添加一个只含 `Allow: /` 的规则组，以免覆盖通用组中的接口限制。CDN、防火墙和访问验证仍可能影响抓取；搜索抓取与模型训练的机器人用途也不同，应按部署者的选择分别管理。
+
+部署后，在 Google Search Console 提交 `https://你的域名/sitemap.xml`。地图包含中文首页、三个语言版本与三篇中文教程；首页语言版本的 canonical、hreflang、导航链接一致，教程仅使用自身的 canonical。Markdown 版不重复列入地图。发布后可通过“网址检查”检查首页与教程，并在需要时请求编入索引。如果仍显示“无法抓取”，检查具体抓取错误和 Cloudflare 安全事件；本地或普通浏览器访问成功不等于 Google 抓取成功。站点地图和 AI 可读文档可帮助发现与理解内容，不保证收录、排名或 AI 引用，搜索标题与摘要也可能由 Google 重写。
 
 ## 通用设置密码保护
 

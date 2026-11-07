@@ -8,6 +8,7 @@ import { Footer } from '../components/Footer.jsx';
 import { HomeGuide } from '../components/HomeGuide.jsx';
 import { ConversionOverview, ConversionGuidePage } from '../components/ConversionGuides.jsx';
 import { CONVERSION_GUIDES } from '../content/conversionGuides.js';
+import { buildGuideMarkdown, buildLlmsText, guideMarkdownPath } from '../content/publicDocuments.js';
 import { SingboxConfigBuilder } from '../builders/SingboxConfigBuilder.js';
 import { ClashConfigBuilder } from '../builders/ClashConfigBuilder.js';
 import { SurgeConfigBuilder } from '../builders/SurgeConfigBuilder.js';
@@ -193,7 +194,22 @@ export function createApp(bindings = {}) {
     // Guides have one Chinese URL; request headers must not change the indexed document.
     for (const guide of CONVERSION_GUIDES) {
         app.get(guide.path, (c) => c.html(<ConversionGuidePage guide={guide} origin={new URL(c.req.url).origin} />));
+        app.get(guideMarkdownPath(guide), (c) => {
+            const origin = new URL(c.req.url).origin;
+            return c.text(buildGuideMarkdown(guide, origin), 200, {
+                'Content-Type': 'text/markdown; charset=utf-8',
+                'Content-Language': 'zh-CN',
+                'Cache-Control': 'public, max-age=3600',
+                'Link': `<${origin}${guide.path}>; rel="canonical"`
+            });
+        });
     }
+
+    app.get('/llms.txt', (c) => c.text(buildLlmsText(new URL(c.req.url).origin), 200, {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Language': 'zh-CN',
+        'Cache-Control': 'public, max-age=3600'
+    }));
 
     app.get('/robots.txt', (c) => {
         const origin = new URL(c.req.url).origin;

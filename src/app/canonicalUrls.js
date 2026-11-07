@@ -2,14 +2,16 @@ import { resolveLanguage } from '../i18n/index.js';
 import { DEFAULT_LANG } from '../i18n/languages.js';
 import { CONVERSION_GUIDES } from '../content/conversionGuides.js';
 
-const PUBLIC_PAGES = new Set(['/', '/robots.txt', '/sitemap.xml']);
+const PUBLIC_PAGES = new Set(['/', '/robots.txt', '/sitemap.xml', '/llms.txt']);
 const isLoopback = (hostname) => hostname === 'localhost' || hostname.endsWith('.localhost') ||
     /^127\.\d+\.\d+\.\d+$/.test(hostname) || hostname === '[::1]';
 
 export function canonicalRedirect(requestUrl, forceHttps) {
     const url = new URL(requestUrl);
     const guidePath = url.pathname.replace(/\/$/, '');
-    const guide = CONVERSION_GUIDES.find(guide => guide.path === guidePath || guide.previousPaths?.includes(guidePath));
+    const markdown = guidePath.endsWith('.md');
+    const htmlPath = markdown ? guidePath.slice(0, -3) : guidePath;
+    const guide = CONVERSION_GUIDES.find(guide => guide.path === htmlPath || guide.previousPaths?.includes(htmlPath));
     const isGuide = Boolean(guide);
     if (!PUBLIC_PAGES.has(url.pathname) && !isGuide) return null;
 
@@ -19,7 +21,7 @@ export function canonicalRedirect(requestUrl, forceHttps) {
     }
 
     if (isGuide) {
-        url.pathname = guide.path;
+        url.pathname = `${guide.path}${markdown ? '.md' : ''}`;
         url.searchParams.delete('lang');
     }
 

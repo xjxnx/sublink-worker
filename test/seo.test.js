@@ -170,11 +170,12 @@ describe('SEO: /sitemap.xml route', () => {
         const app = createTestApp();
         const xml = await (await app.request(`${ORIGIN}/sitemap.xml`)).text();
         const blocks = xml.match(/<url>[\s\S]*?<\/url>/g);
-        expect(blocks).toHaveLength(6);
+        expect(blocks).toHaveLength(4 + CONVERSION_GUIDES.length);
         for (const block of blocks) {
             const url = block.match(/<loc>(.*?)<\/loc>/)[1];
             const lastmod = block.match(/<lastmod>(.*?)<\/lastmod>/)?.[1];
             const expectedDate = {
+                '/guides/subscription-formats': '2026-11-07',
                 '/guides/merge-subscriptions': '2026-10-06',
                 '/guides/chain-proxy': '2026-10-26'
             }[new URL(url).pathname] || '2026-10-24';
@@ -204,7 +205,7 @@ describe('SEO: /sitemap.xml route', () => {
 
         // Chinese-only guides must not claim translations that do not exist.
         const urlBlocks = xml.match(/<url>[\s\S]*?<\/url>/g) || [];
-        expect(urlBlocks).toHaveLength(6);
+        expect(urlBlocks).toHaveLength(4 + CONVERSION_GUIDES.length);
         for (const block of urlBlocks.slice(0, 4)) {
             expect(block).toContain('hreflang="zh-CN"');
             expect(block).toContain('hreflang="en"');
@@ -293,7 +294,7 @@ describe('SEO: stable public URLs', () => {
         const origin = 'https://example.com';
         const sitemap = await (await app.request(`${origin}/sitemap.xml`)).text();
         const urls = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map(match => match[1]);
-        expect(urls).toHaveLength(6);
+        expect(urls).toHaveLength(4 + CONVERSION_GUIDES.length);
         for (const url of urls) {
             const response = await app.request(url, { headers: { 'Accept-Language': 'ru' } });
             expect(response.status).toBe(200);
@@ -307,7 +308,7 @@ describe('SEO: stable public URLs', () => {
                 }
             } else {
                 expect(html).toMatch(/<html\s+lang="zh-CN"/);
-                expect(html).not.toContain('rel="alternate"');
+                expect(html).not.toContain('hreflang=');
             }
         }
         const robots = await (await app.request(`${origin}/robots.txt`)).text();
