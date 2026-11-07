@@ -48,6 +48,31 @@ function getClashUdpValue(proxy, defaultEnabled = true) {
     return defaultEnabled;
 }
 
+function prioritizeSocksHttpNodes(config, translator) {
+    const proxies = config.proxies || [];
+    const preferredNames = new Set(proxies
+        .filter(proxy => proxy?.type === 'socks5' || proxy?.type === 'http')
+        .map(proxy => proxy.name));
+    if (preferredNames.size === 0) return;
+
+    const nodeNames = new Set(proxies.map(proxy => proxy?.name));
+    const excludedNames = new Set(['Auto Select', 'Private', 'Location:CN', 'Github', 'Telegram', 'Fall Back']
+        .map(key => normalizeGroupName(translator(`outboundNames.${key}`))));
+
+    for (const group of config['proxy-groups'] || []) {
+        if (group?.type !== 'select' || !Array.isArray(group.proxies) || excludedNames.has(normalizeGroupName(group.name))) continue;
+        const preferred = group.proxies.filter(name => preferredNames.has(name));
+        if (preferred.length === 0) continue;
+        const orderedNodes = [
+            ...preferred,
+            ...group.proxies.filter(name => nodeNames.has(name) && !preferredNames.has(name))
+        ];
+        let index = 0;
+        // Reorder only node slots so group entrances and special actions keep their positions.
+        group.proxies = group.proxies.map(name => nodeNames.has(name) ? orderedNodes[index++] : name);
+    }
+}
+
 // Desired top-level key order for the emitted Clash YAML. Keys not listed here are
 // appended afterwards in their existing insertion order.
 const CLASH_KEY_ORDER = [
@@ -863,6 +888,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
         }
 
         sanitizeClashProxyGroups(this.config);
+        prioritizeSocksHttpNodes(this.config, this.t);
         this.validateProxyGroups();
 
         this.config.rules = [

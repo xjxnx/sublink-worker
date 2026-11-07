@@ -98,7 +98,9 @@ describe('Clash / Stash chain proxy output', () => {
         expect(config.proxies.find(p => p.type === 'socks5')).toMatchObject({ 'dialer-proxy': GROUP, username: 'user' });
         expect(config.proxies.find(p => p.type === 'http')).toMatchObject({ 'dialer-proxy': `${GROUP_PREFIX}-HTTP`, tls: true, sni: 'tls.example.com' });
         expect(config.proxies.find(p => p.type === 'trojan')['dialer-proxy']).toBeUndefined();
-        expect(config['proxy-groups'].find(g => g.name === '🚀 节点选择').proxies).toEqual(expect.arrayContaining(['SOCKS', 'HTTP']));
+        expect(config['proxy-groups'].find(g => g.name === '🚀 节点选择').proxies).toEqual(['⚡ 自动选择', 'SOCKS', 'HTTP', 'Japan', 'DIRECT', 'REJECT']);
+        expect(config['proxy-groups'].find(g => g.name === '⚡ 自动选择').proxies).toEqual(['Japan', 'SOCKS', 'HTTP']);
+        expect(config['proxy-groups'].find(g => g.name === '🐟 漏网之鱼').proxies).toEqual(['🚀 节点选择', 'Japan', 'SOCKS', 'HTTP', 'DIRECT', 'REJECT']);
         expect(yaml.load(builder.formatConfig())).toEqual(config);
     });
 
