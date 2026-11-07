@@ -43,7 +43,7 @@ export const UNIFIED_RULES = [
 	},
 	{
 		name: 'Telegram',
-		site_rules: [],
+		site_rules: ['telegram'],
 		ip_rules: ['telegram']
 	},
 	{
@@ -63,13 +63,13 @@ export const UNIFIED_RULES = [
 	},
 	{
 		name: 'Social Media',
-		site_rules: ['facebook', 'instagram', 'twitter', 'tiktok', 'linkedin'],
-		ip_rules: []
+		site_rules: ['facebook', 'instagram', 'twitter', 'tiktok', 'linkedin', 'line', 'whatsapp'],
+		ip_rules: ['twitter']
 	},
 	{
 		name: 'Streaming',
-		site_rules: ['netflix', 'hulu', 'disney', 'hbo', 'amazon', 'bahamut'],
-		ip_rules: []
+		site_rules: ['netflix', 'hulu', 'disney', 'hbo', 'amazon', 'bahamut', 'spotify'],
+		ip_rules: ['netflix']
 	},
 	{
 		name: 'Gaming',
@@ -112,7 +112,7 @@ export const RULE_OPTIONS = Object.fromEntries(UNIFIED_RULES
 		label: site,
 		parent: rule.name,
 		site_rules: [site],
-		ip_rules: []
+		ip_rules: rule.ip_rules.filter(ip => ip === site)
 	}))]));
 
 export const RULE_OPTIONS_BY_NAME = Object.fromEntries(Object.values(RULE_OPTIONS)

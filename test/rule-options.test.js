@@ -5,7 +5,7 @@ import { MemoryKVAdapter } from '../src/adapters/kv/memoryKv.js';
 import { RULE_OPTIONS, UNIFIED_RULES, PREDEFINED_RULE_SETS, getOutbounds, generateRules } from '../src/config/index.js';
 import { createTranslator } from '../src/i18n/index.js';
 
-const services = ['facebook', 'instagram', 'twitter', 'tiktok', 'linkedin'];
+const services = ['facebook', 'instagram', 'twitter', 'tiktok', 'linkedin', 'line', 'whatsapp'];
 const children = services.map(service => `Social Media:${service}`);
 const input = 'ss://YWVzLTEyOC1nY206dGVzdA@node.example:443#Test';
 const app = createApp({ kv: new MemoryKVAdapter(), logger: console });
